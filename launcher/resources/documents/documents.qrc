@@ -1,0 +1,12 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/documents">
+        <file>../../../COPYING.md</file>
+        <file alias="GPL-3.0.txt">../../../LICENSE</file>
+        <file>credits.html</file>
+    </qresource>
+    <qresource prefix="/translations">
+        <file alias="mmc_zh.qm">../../translations/mmc_zh.qm</file>
+    </qresource>
+</RCC>
+
