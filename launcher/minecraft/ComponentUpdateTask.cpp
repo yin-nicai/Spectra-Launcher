@@ -132,13 +132,7 @@ static LoadResult loadComponent(ComponentPtr component, Task::Ptr& loadTask, Net
             result = LoadResult::LoadedLocal;
         } else {
             loadTask = APPLICATION->metadataIndex()->loadVersion(component->m_uid, component->m_version, netmode);
-            loadTask->start();
-            if (netmode == Net::Mode::Online)
-                result = LoadResult::RequiresRemote;
-            else if (metaVersion->isLoaded())
-                result = LoadResult::LoadedLocal;
-            else
-                result = LoadResult::Failed;
+            result = loadTask ? LoadResult::RequiresRemote : LoadResult::Failed;
         }
     }
     return result;
@@ -224,6 +218,7 @@ void ComponentUpdateTask::loadComponents()
             status.task = loadTask;
             d->remoteLoadStatusList.append(status);
             taskIndex++;
+            QMetaObject::invokeMethod(loadTask.get(), [task = loadTask] { task->start(); }, Qt::QueuedConnection);
         }
         componentIndex++;
     }
@@ -241,6 +236,11 @@ void ComponentUpdateTask::loadComponents()
             break;
         }
         case LoadResult::Failed: {
+            for (const auto& component : d->m_profile->d->components) {
+                qCWarning(instanceProfileResolveC)
+                    << "Component metadata could not be loaded:" << component->getID() << component->getVersion()
+                    << "loaded:" << component->m_loaded << "has local file:" << QFile::exists(component->getFilename());
+            }
             emitFailed(tr("Some component metadata load tasks failed."));
             return;
         }
@@ -753,7 +753,7 @@ void ComponentUpdateTask::remoteLoadSucceeded(size_t taskIndex)
         return;
     }
     qCDebug(instanceProfileResolveC) << "Remote task" << taskIndex << "succeeded";
-    taskSlot.succeeded = false;
+    taskSlot.succeeded = true;
     taskSlot.finished = true;
     d->remoteTasksInProgress--;
     // update the cached data of the component from the downloaded version file.
