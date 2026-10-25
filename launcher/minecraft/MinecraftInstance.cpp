@@ -1193,6 +1193,9 @@ LaunchTask* MinecraftInstance::createLaunchTask(AuthSessionPtr session, Minecraf
             process->appendStep(makeShared<TaskStepWrapper>(pptr, t));
         }
     } else {
+        // Cached instances launch without network access. If required libraries are missing,
+        // attempt a normal library repair before the offline consistency check.
+        process->appendStep(makeShared<TaskStepWrapper>(pptr, makeShared<LibrariesTask>(this)));
         process->appendStep(makeShared<EnsureOfflineLibraries>(pptr, this));
     }
 
