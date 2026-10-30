@@ -22,8 +22,10 @@ class PageContainer;
 class PageDialog : public QDialog {
     Q_OBJECT
    public:
-    explicit PageDialog(BasePageProvider* pageProvider, QString defaultId = QString(), QWidget* parent = 0);
+    explicit PageDialog(BasePageProvider* pageProvider, QString defaultId = QString(), QWidget* parent = 0, bool embedded = false);
     virtual ~PageDialog() {}
+
+    void selectPage(const QString& pageId);
 
    signals:
     void applied();
@@ -34,5 +36,6 @@ class PageDialog : public QDialog {
     bool handleClose();
 
    private:
+    bool m_embedded = false;
     PageContainer* m_container;
 };

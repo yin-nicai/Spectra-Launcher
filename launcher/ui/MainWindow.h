@@ -43,6 +43,7 @@
 #include <memory>
 
 #include <QMainWindow>
+#include <QPointer>
 #include <QProcess>
 #include <QTimer>
 
@@ -64,6 +65,8 @@ class QStackedWidget;
 class QToolButton;
 class InstanceProxyModel;
 class LabeledToolButton;
+class PageDialog;
+class NewInstanceDialog;
 class QLabel;
 class MinecraftLauncher;
 class BaseProfilerFactory;
@@ -90,6 +93,8 @@ class MainWindow : public QMainWindow {
     void checkInstancePathForProblems();
 
     void processURLs(QList<QUrl> urls);
+    void showGlobalSettingsPage(const QString& pageId);
+    InstanceWindow* showInstanceView(BaseInstance* instance, const QString& pageId = QString());
    signals:
     void isClosing();
 
@@ -227,6 +232,7 @@ class MainWindow : public QMainWindow {
     void retranslateUi();
 
     void addInstance(const QString& url = QString(), const QMap<QString, QString>& extra_info = {}, const QString& initialPage = QString());
+    void finishNewInstance(int result);
     void activateInstance(BaseInstance* instance);
     void setCatBackground(bool enabled);
     void updateInstanceToolIcon(QString new_icon);
@@ -274,6 +280,10 @@ class MainWindow : public QMainWindow {
 
     BaseInstance* m_selectedInstance = nullptr;
     QString m_currentInstIcon;
+    QPointer<PageDialog> m_globalSettingsPage;
+    QPointer<NewInstanceDialog> m_newInstancePage;
+    QPointer<QWidget> m_previousWorkspacePage;
+    QPointer<InstanceWindow> m_instancePage;
 
     // managed by the application object
     Task* m_versionLoadTask = nullptr;

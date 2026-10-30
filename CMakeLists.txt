@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25) # Required for features like `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT`
 
-project(Spectra VERSION 0.0.1 LANGUAGES C CXX)
+project(Spectra VERSION 0.75.0 LANGUAGES C CXX)
 if(APPLE)
     enable_language(OBJC OBJCXX)
 endif()
@@ -183,7 +183,7 @@ set(Launcher_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(Launcher_VERSION_MINOR ${PROJECT_VERSION_MINOR})
 set(Launcher_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 
-set(Launcher_VERSION_NAME "${Launcher_VERSION_MAJOR}.${Launcher_VERSION_MINOR}.${Launcher_VERSION_PATCH}")
+set(Launcher_VERSION_NAME "0.75")
 set(Launcher_VERSION_NAME4 "${Launcher_VERSION_MAJOR}.${Launcher_VERSION_MINOR}.${Launcher_VERSION_PATCH}.0")
 set(Launcher_VERSION_NAME4_COMMA "${Launcher_VERSION_MAJOR},${Launcher_VERSION_MINOR},${Launcher_VERSION_PATCH},0")
 

@@ -58,6 +58,7 @@ class MainWindow;
 class ViewLogWindow;
 class SetupWizard;
 class GenericPageProvider;
+class BasePageProvider;
 class QFile;
 class HttpMetaCache;
 class SettingsObject;
@@ -197,6 +198,7 @@ class Application : public QApplication {
     ViewLogWindow* showLogWindow();
 
     void ShowGlobalSettings(class QWidget* parent, QString open_page = QString());
+    BasePageProvider* globalSettingsProvider();
 
     QUrl normalizeImportUrl(const QString& url);
 

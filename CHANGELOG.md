@@ -4,6 +4,18 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [0.75] - 2026-10-30
+
+### 新增
+
+- 棱镜光谱图标更新为浅色 B 版与深色 C 版，并随当前主题自动选择。
+- 设置中心、下载与新建实例、实例编辑和控制台统一整合到主窗口。
+
+### 修复
+
+- 修复切换功能页面后残留独立窗口的问题。
+- 修复应用退出过程中主页访问已销毁图标列表导致的崩溃。
+
 ## [0.0.1] - 2026-10-25
 
 ### 新增
@@ -50,3 +62,4 @@
 - 离线账户无法加入正版验证服务器。
 
 [0.0.1]: https://github.com/yin-nicai/Spectra-Launcher/releases/tag/v0.0.1
+[0.75]: https://github.com/yin-nicai/Spectra-Launcher/releases/tag/v0.75

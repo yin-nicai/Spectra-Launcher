@@ -60,6 +60,7 @@ Config::Config()
     VERSION_MAJOR = @Launcher_VERSION_MAJOR@;
     VERSION_MINOR = @Launcher_VERSION_MINOR@;
     VERSION_PATCH = @Launcher_VERSION_PATCH@;
+    VERSION_DISPLAY = "@Launcher_VERSION_NAME@";
 
     BUILD_PLATFORM = "@Launcher_BUILD_PLATFORM@";
     BUILD_DATE = "@Launcher_BUILD_TIMESTAMP@";
@@ -119,6 +120,9 @@ Config::Config()
 
 QString Config::versionString() const
 {
+    if (!VERSION_DISPLAY.isEmpty()) {
+        return VERSION_DISPLAY;
+    }
     return QString("%1.%2.%3").arg(VERSION_MAJOR).arg(VERSION_MINOR).arg(VERSION_PATCH);
 }
 
@@ -127,7 +131,8 @@ QString Config::printableVersionString() const
     QString vstr = versionString();
 
     // If the build is not a main release, append the channel
-    if (VERSION_CHANNEL != "stable" && GIT_TAG != vstr) {
+    const bool isReleaseTag = GIT_TAG == vstr || GIT_TAG == QStringLiteral("v") + vstr;
+    if (VERSION_CHANNEL != "stable" && !isReleaseTag) {
         vstr += "-" + VERSION_CHANNEL;
     }
     return vstr;

@@ -99,6 +99,7 @@
 #include <QLibraryInfo>
 #include <QList>
 #include <QNetworkAccessManager>
+#include <QPalette>
 #include <QStringList>
 #include <QStringLiteral>
 #include <QStyleFactory>
@@ -1381,7 +1382,9 @@ JavaInstallList* Application::javalist()
 
 QIcon Application::logo()
 {
-    return QIcon(":/" + BuildConfig.LAUNCHER_SVGFILENAME);
+    const bool darkTheme = QApplication::palette().color(QPalette::Window).lightness() < 128;
+    const auto logoFile = darkTheme ? BuildConfig.LAUNCHER_APPID + ".logo-darkmode.svg" : BuildConfig.LAUNCHER_APPID + ".logo.svg";
+    return QIcon(":/" + logoFile);
 }
 
 bool Application::openJsonEditor(const QString& filename)
@@ -1512,12 +1515,16 @@ void Application::ShowGlobalSettings(class QWidget* parent, QString open_page)
         return;
     }
     emit globalSettingsAboutToOpen();
-    {
-        SettingsObject::Lock lock(APPLICATION->settings());
-        PageDialog dlg(m_globalSettingsProvider.get(), open_page, parent);
-        connect(&dlg, &PageDialog::applied, this, &Application::globalSettingsApplied);
-        dlg.exec();
+    Q_UNUSED(parent);
+    auto* mainWindow = showMainWindow();
+    if (mainWindow) {
+        mainWindow->showGlobalSettingsPage(open_page);
     }
+}
+
+BasePageProvider* Application::globalSettingsProvider()
+{
+    return m_globalSettingsProvider.get();
 }
 
 MainWindow* Application::showMainWindow(bool minimized)
@@ -1562,36 +1569,36 @@ InstanceWindow* Application::showInstanceWindow(BaseInstance* instance, QString 
 {
     if (!instance)
         return nullptr;
-    auto id = instance->id();
-    QMutexLocker locker(&m_instanceExtrasMutex);
-    auto& extras = m_instanceExtras[id];
-    auto& window = extras.window;
 
-    if (window) {
-// If the window is minimized on macOS or Windows, activate and bring it up
-#ifdef Q_OS_MACOS
-        if (window->isMinimized()) {
-            window->setWindowState(window->windowState() & ~Qt::WindowMinimized);
-        }
-#elif defined(Q_OS_WIN)
-        if (window->isMinimized()) {
-            window->showNormal();
-        }
-#endif
-
-        window->raise();
-        window->activateWindow();
-    } else {
-        window = new InstanceWindow(instance);
-        m_openWindows++;
-        connect(window, &InstanceWindow::isClosing, this, &Application::on_windowClose);
+    auto* mainWindow = showMainWindow();
+    if (!mainWindow) {
+        return nullptr;
     }
 
-    if (!page.isEmpty()) {
-        window->selectPage(page);
+    auto* window = mainWindow->showInstanceView(instance, page);
+    if (!window) {
+        return nullptr;
     }
-    if (extras.controller) {
-        extras.controller->setParentWidget(window);
+
+    const auto id = instance->id();
+    {
+        QMutexLocker locker(&m_instanceExtrasMutex);
+        auto& extras = m_instanceExtras[id];
+        extras.window = window;
+        if (extras.controller) {
+            extras.controller->setParentWidget(window);
+        }
+    }
+    constexpr auto lifecycleProperty = "spectra.applicationLifecycleConnected";
+    if (!window->property(lifecycleProperty).toBool()) {
+        window->setProperty(lifecycleProperty, true);
+        connect(window, &QObject::destroyed, this, [this, id] {
+            QMutexLocker locker(&m_instanceExtrasMutex);
+            auto iter = m_instanceExtras.find(id);
+            if (iter != m_instanceExtras.end()) {
+                iter->second.window = nullptr;
+            }
+        });
     }
     return window;
 }

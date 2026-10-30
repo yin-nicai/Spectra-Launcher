@@ -50,9 +50,15 @@
 
 #include "icons/IconList.h"
 
-InstanceWindow::InstanceWindow(BaseInstance* instance, QWidget* parent) : QMainWindow(parent), m_instance(instance)
+InstanceWindow::InstanceWindow(BaseInstance* instance, QWidget* parent, bool embedded)
+    : QMainWindow(parent), m_instance(instance), m_embedded(embedded)
 {
-    setAttribute(Qt::WA_DeleteOnClose);
+    setAttribute(Qt::WA_DeleteOnClose, !m_embedded);
+    if (m_embedded) {
+        setWindowFlags(Qt::Widget);
+        setWindowModality(Qt::NonModal);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    }
 
     auto icon = APPLICATION->icons()->getIcon(m_instance->iconKey());
     QString windowTitle = tr("Console window for ") + m_instance->name();
@@ -107,7 +113,7 @@ InstanceWindow::InstanceWindow(BaseInstance* instance, QWidget* parent) : QMainW
         m_closeButton = new QPushButton(this);
         m_closeButton->setText(tr("Close"));
         horizontalLayout->addWidget(m_closeButton);
-        connect(m_closeButton, &QPushButton::clicked, this, &QMainWindow::close);
+        connect(m_closeButton, &QPushButton::clicked, this, &InstanceWindow::requestClose);
 
         m_container->addButtons(horizontalLayout);
 
@@ -116,7 +122,7 @@ InstanceWindow::InstanceWindow(BaseInstance* instance, QWidget* parent) : QMainW
     }
 
     // restore window state
-    {
+    if (!m_embedded) {
         auto base64State = APPLICATION->settings()->get("ConsoleWindowState").toString().toUtf8();
         restoreState(QByteArray::fromBase64(base64State));
         auto base64Geometry = APPLICATION->settings()->get("ConsoleWindowGeometry").toString().toUtf8();
@@ -141,14 +147,20 @@ InstanceWindow::InstanceWindow(BaseInstance* instance, QWidget* parent) : QMainW
         static_cast<ManagedPackPage*>(m_container->getPage("managed_pack"))->setInstanceWindow(this);
     }
 
-    show();
+    if (!m_embedded) {
+        show();
+    }
 }
 
 void InstanceWindow::on_instanceStatusChanged(BaseInstance::Status, BaseInstance::Status newStatus)
 {
     if (newStatus == BaseInstance::Status::Gone) {
         m_doNotSave = true;
-        close();
+        if (m_embedded) {
+            emit closeRequested();
+        } else {
+            close();
+        }
     }
 }
 
@@ -194,6 +206,14 @@ void InstanceWindow::runningStateChanged(bool running)
 
 void InstanceWindow::closeEvent(QCloseEvent* event)
 {
+    if (m_embedded) {
+        if (m_doNotSave || m_container->prepareToClose()) {
+            emit closeRequested();
+        }
+        event->ignore();
+        return;
+    }
+
     bool proceed = true;
     if (!m_doNotSave) {
         proceed &= m_container->prepareToClose();
@@ -236,9 +256,13 @@ BasePage* InstanceWindow::selectedPage() const
 
 bool InstanceWindow::requestClose()
 {
-    if (m_container->prepareToClose()) {
-        close();
-        return true;
+    if (!m_doNotSave && !m_container->prepareToClose()) {
+        return false;
     }
-    return false;
+    if (m_embedded) {
+        emit closeRequested();
+    } else {
+        close();
+    }
+    return true;
 }

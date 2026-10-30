@@ -2,11 +2,11 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./program_info/org.spectra.Spectra.logo-darkmode.svg">
     <source media="(prefers-color-scheme: light)" srcset="./program_info/org.spectra.Spectra.logo.svg">
-    <img alt="光谱 0.0.1（Spectra 0.0.1）" src="./program_info/org.spectra.Spectra.logo.svg" width="38%">
+    <img alt="光谱 0.75（Spectra 0.75）" src="./program_info/org.spectra.Spectra.logo.svg" width="38%">
   </picture>
 </p>
 
-<h1 align="center">光谱 0.0.1（Spectra 0.0.1）</h1>
+<h1 align="center">光谱 0.75（Spectra 0.75）</h1>
 
 <p align="center">
   面向 Minecraft 的可扩展、去中心化启动器<br>
@@ -88,13 +88,13 @@
 
 | 平台 | 安装包 | 便携版 |
 | --- | --- | --- |
-| Windows x86_64 | `Spectra-0.0.1-Windows-x86_64-Setup.exe` | `Spectra-0.0.1-Windows-x86_64-Portable.zip` |
-| Linux x86_64 | `Spectra-0.0.1-Linux-x86_64.deb` | `Spectra-0.0.1-Linux-x86_64.tar.gz` |
+| Windows x86_64 | `Spectra-0.75-Windows-x86_64-Setup.exe` | `Spectra-0.75-Windows-x86_64-Portable.zip` |
+| Linux x86_64 | `Spectra-0.75-Linux-x86_64.deb` | `Spectra-0.75-Linux-x86_64.tar.gz` |
 
 每个 Release 同时提供 `SHA256SUMS.txt`。下载后建议校验文件完整性：
 
 ```powershell
-Get-FileHash .\Spectra-0.0.1-Windows-x86_64-Setup.exe -Algorithm SHA256
+Get-FileHash .\Spectra-0.75-Windows-x86_64-Setup.exe -Algorithm SHA256
 ```
 
 ```bash

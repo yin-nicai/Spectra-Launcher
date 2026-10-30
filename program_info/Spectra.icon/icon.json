@@ -8,9 +8,9 @@
       "layers" : [
         {
           "image-name" : "block.svg",
-          "name" : "block",
+          "name" : "Spectra prism spectrum",
           "position" : {
-            "scale" : 19.28,
+            "scale" : 1.0,
             "translation-in-points" : [
               0,
               0
@@ -20,43 +20,7 @@
       ],
       "shadow" : {
         "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
-      }
-    },
-    {
-      "blur-material-specializations" : [
-        {
-          "value" : 0.5
-        },
-        {
-          "appearance" : "dark",
-          "value" : null
-        }
-      ],
-      "layers" : [
-        {
-          "blend-mode" : "normal",
-          "fill" : "automatic",
-          "glass" : true,
-          "hidden" : false,
-          "image-name" : "rainbow.svg",
-          "name" : "rainbow",
-          "position" : {
-            "scale" : 19.28,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
-        }
-      ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+        "opacity" : 0.22
       },
       "translucency" : {
         "enabled" : false,

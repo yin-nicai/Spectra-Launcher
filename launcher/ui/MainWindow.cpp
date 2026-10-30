@@ -105,6 +105,7 @@
 #include "WorkspaceHeader.h"
 #include "WorkspaceStyle.h"
 
+#include "settings/SettingsObject.h"
 #include "ui/GuiUtil.h"
 #include "ui/ViewLogWindow.h"
 #include "ui/dialogs/AboutDialog.h"
@@ -121,6 +122,7 @@
 #include "ui/instanceview/InstanceDelegate.h"
 #include "ui/instanceview/InstanceProxyModel.h"
 #include "ui/instanceview/InstanceView.h"
+#include "ui/pagedialog/PageDialog.h"
 #include "ui/themes/ITheme.h"
 #include "ui/themes/ThemeManager.h"
 #include "ui/widgets/LabeledToolButton.h"
@@ -148,6 +150,14 @@
 #include "MMCTime.h"
 
 namespace {
+class SettingsSaveLock final : public QObject {
+   public:
+    SettingsSaveLock(SettingsObject* settings, QObject* parent) : QObject(parent), m_lock(settings) {}
+
+   private:
+    SettingsObject::Lock m_lock;
+};
+
 QString profileInUseFilter(const QString& profile, bool used)
 {
     if (used) {
@@ -157,6 +167,79 @@ QString profileInUseFilter(const QString& profile, bool used)
     }
 }
 }  // namespace
+
+void MainWindow::showGlobalSettingsPage(const QString& pageId)
+{
+    if (m_globalSettingsPage) {
+        m_globalSettingsPage->selectPage(pageId);
+        m_navigation->setCurrentItem(NavigationSidebar::Item::Settings);
+        m_contentStack->setCurrentWidget(m_globalSettingsPage);
+        return;
+    }
+
+    auto* dialog = new PageDialog(APPLICATION->globalSettingsProvider(), pageId, m_contentStack, true);
+    m_globalSettingsPage = dialog;
+    new SettingsSaveLock(APPLICATION->settings(), dialog);
+    connect(dialog, &PageDialog::applied, APPLICATION, &Application::globalSettingsApplied);
+    connect(dialog, &QDialog::finished, this, [this, dialog] {
+        if (m_contentStack->indexOf(dialog) >= 0) {
+            m_contentStack->removeWidget(dialog);
+        }
+        dialog->deleteLater();
+        m_globalSettingsPage = nullptr;
+        m_navigation->setCurrentItem(NavigationSidebar::Item::Settings);
+        m_contentStack->setCurrentWidget(m_settingsPage);
+    });
+    m_contentStack->addWidget(dialog);
+    m_navigation->setCurrentItem(NavigationSidebar::Item::Settings);
+    m_contentStack->setCurrentWidget(dialog);
+    dialog->show();
+}
+
+InstanceWindow* MainWindow::showInstanceView(BaseInstance* instance, const QString& pageId)
+{
+    if (!instance) {
+        return nullptr;
+    }
+
+    if (m_instancePage && m_instancePage->instanceId() == instance->id()) {
+        if (!pageId.isEmpty()) {
+            m_instancePage->selectPage(pageId);
+        }
+        m_navigation->setCurrentItem(NavigationSidebar::Item::Instances);
+        m_contentStack->setCurrentWidget(m_instancePage);
+        return m_instancePage;
+    }
+
+    if (m_instancePage && !m_instancePage->requestClose()) {
+        return nullptr;
+    }
+
+    auto* instancePage = new InstanceWindow(instance, m_contentStack, true);
+    m_instancePage = instancePage;
+    const auto returnPage = m_contentStack->currentWidget();
+    connect(instancePage, &InstanceWindow::closeRequested, this, [this, instancePage, returnPage] {
+        if (m_contentStack->indexOf(instancePage) >= 0) {
+            m_contentStack->removeWidget(instancePage);
+        }
+        instancePage->deleteLater();
+        m_instancePage = nullptr;
+        if (returnPage && m_contentStack->indexOf(returnPage) >= 0) {
+            m_contentStack->setCurrentWidget(returnPage);
+        } else {
+            m_navigation->setCurrentItem(NavigationSidebar::Item::Instances);
+            m_contentStack->setCurrentWidget(m_instancesPage);
+        }
+    });
+    m_contentStack->addWidget(instancePage);
+    if (!pageId.isEmpty()) {
+        instancePage->selectPage(pageId);
+    }
+    m_navigation->setCurrentItem(NavigationSidebar::Item::Instances);
+    m_contentStack->setCurrentWidget(instancePage);
+    instancePage->show();
+    return instancePage;
+}
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -1137,16 +1220,55 @@ void MainWindow::addInstance(const QString& url, const QMap<QString, QString>& e
         groupName = APPLICATION->settings()->get("LastUsedGroupForNewInstance").toString();
     }
 
-    NewInstanceDialog newInstDlg(groupName, url, extra_info, this);
-    if (!initialPage.isEmpty()) {
-        newInstDlg.selectPage(initialPage);
-    }
-    if (!newInstDlg.exec())
+    if (m_newInstancePage) {
+        if (!initialPage.isEmpty()) {
+            m_newInstancePage->selectPage(initialPage);
+        }
+        m_contentStack->setCurrentWidget(m_newInstancePage);
         return;
+    }
 
-    APPLICATION->settings()->set("LastUsedGroupForNewInstance", newInstDlg.instGroup());
+    m_previousWorkspacePage = m_contentStack->currentWidget();
+    auto* dialog = new NewInstanceDialog(groupName, url, extra_info, m_contentStack);
+    dialog->setWindowFlags(Qt::Widget);
+    dialog->setWindowModality(Qt::NonModal);
+    dialog->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    if (!initialPage.isEmpty()) {
+        dialog->selectPage(initialPage);
+    }
+    m_newInstancePage = dialog;
+    connect(dialog, &QDialog::finished, this, &MainWindow::finishNewInstance);
+    m_contentStack->addWidget(dialog);
+    m_contentStack->setCurrentWidget(dialog);
+    dialog->show();
+}
 
-    InstanceTask* creationTask = newInstDlg.extractTask();
+void MainWindow::finishNewInstance(int result)
+{
+    auto* dialog = m_newInstancePage.data();
+    if (!dialog) {
+        return;
+    }
+
+    InstanceTask* creationTask = nullptr;
+    if (result == QDialog::Accepted) {
+        APPLICATION->settings()->set("LastUsedGroupForNewInstance", dialog->instGroup());
+        creationTask = dialog->extractTask();
+    }
+
+    if (m_contentStack->indexOf(dialog) >= 0) {
+        m_contentStack->removeWidget(dialog);
+    }
+    dialog->deleteLater();
+    m_newInstancePage = nullptr;
+    const auto returnPage = m_previousWorkspacePage;
+    m_previousWorkspacePage = nullptr;
+    if (returnPage && m_contentStack->indexOf(returnPage) >= 0) {
+        m_contentStack->setCurrentWidget(returnPage);
+    } else {
+        m_navigation->setCurrentItem(NavigationSidebar::Item::Instances);
+        m_contentStack->setCurrentWidget(m_instancesPage);
+    }
     if (creationTask) {
         instanceFromInstanceTask(creationTask);
     }

@@ -271,16 +271,20 @@ void HomeDashboard::refresh()
     const bool available = m_instance != nullptr;
     m_stop->setVisible(available && m_instance->isRunning());
     m_folder->setVisible(available);
+    auto* icons = APPLICATION->icons();
+    if (!icons) {
+        return;
+    }
 
     if (!m_instance) {
-        m_instanceIcon->setPixmap(APPLICATION->icons()->getIcon(QStringLiteral("grass")).pixmap(78));
+        m_instanceIcon->setPixmap(icons->getIcon(QStringLiteral("grass")).pixmap(78));
         m_instanceName->setText(tr("No instance selected"));
         m_instanceDescription->setText(tr("Use the instance selector above, or create a new instance."));
         m_status->setText(tr("Your Minecraft library is ready."));
         return;
     }
 
-    m_instanceIcon->setPixmap(APPLICATION->icons()->getIcon(m_instance->iconKey()).pixmap(78));
+    m_instanceIcon->setPixmap(icons->getIcon(m_instance->iconKey()).pixmap(78));
     m_instanceName->setText(m_instance->name());
     m_instanceDescription->setText(m_instance->getStatusbarDescription());
     m_status->setText(m_instance->isRunning() ? tr("The instance is running.") : tr("Ready to launch."));

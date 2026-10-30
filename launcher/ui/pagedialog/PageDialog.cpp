@@ -26,9 +26,15 @@
 #include "ui/WorkspaceStyle.h"
 #include "ui/widgets/PageContainer.h"
 
-PageDialog::PageDialog(BasePageProvider* pageProvider, QString defaultId, QWidget* parent) : QDialog(parent)
+PageDialog::PageDialog(BasePageProvider* pageProvider, QString defaultId, QWidget* parent, bool embedded)
+    : QDialog(parent), m_embedded(embedded)
 {
     setWindowTitle(pageProvider->dialogTitle());
+    if (m_embedded) {
+        setWindowFlags(Qt::Widget);
+        setWindowModality(Qt::NonModal);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    }
     m_container = new PageContainer(pageProvider, std::move(defaultId), this);
 
     auto* mainLayout = new QVBoxLayout(this);
@@ -56,7 +62,14 @@ PageDialog::PageDialog(BasePageProvider* pageProvider, QString defaultId, QWidge
     connect(buttons->button(QDialogButtonBox::Cancel), &QPushButton::clicked, this, &PageDialog::reject);
     connect(buttons->button(QDialogButtonBox::Help), &QPushButton::clicked, m_container, &PageContainer::help);
 
-    restoreGeometry(QByteArray::fromBase64(APPLICATION->settings()->get("PagedGeometry").toString().toUtf8()));
+    if (!m_embedded) {
+        restoreGeometry(QByteArray::fromBase64(APPLICATION->settings()->get("PagedGeometry").toString().toUtf8()));
+    }
+}
+
+void PageDialog::selectPage(const QString& pageId)
+{
+    m_container->selectPage(pageId);
 }
 
 void PageDialog::accept()
@@ -78,7 +91,9 @@ bool PageDialog::handleClose()
         return false;
 
     qDebug() << "Paged dialog close approved";
-    APPLICATION->settings()->set("PagedGeometry", QString::fromUtf8(saveGeometry().toBase64()));
+    if (!m_embedded) {
+        APPLICATION->settings()->set("PagedGeometry", QString::fromUtf8(saveGeometry().toBase64()));
+    }
     qDebug() << "Paged dialog geometry saved";
 
     emit applied();

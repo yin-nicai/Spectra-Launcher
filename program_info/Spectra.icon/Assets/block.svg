@@ -1,91 +1,53 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-  width="48"
-  height="48"
-  version="1.1"
-  viewBox="0 0 12.7 12.7"
-  id="svg_combined"
-  xmlns="http://www.w3.org/2000/svg"
-  xmlns:svg="http://www.w3.org/2000/svg"
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:cc="http://creativecommons.org/ns#"
-  xmlns:dc="http://purl.org/dc/elements/1.1/">
-  <title>Prism Launcher Logo</title>
-  <g
-    transform="matrix(0.88,0,0,0.88,-10.906,-1.2421)"
-    id="g32_top"
-    style="display:inline">
-    <g
-      transform="translate(13.26,2.2776)"
-      id="g28"
-      style="display:inline">
-      <path
-        transform="matrix(0.96975,0,0,0.96975,0.1921,0.1921)"
-        d="m 6.3498,2.9393 c -0.34105,0 -2.7827,1.4099 -2.9532,1.7052 L 6.3498,9.7602 9.3036,4.6445 C 9.13308,4.34915 6.6909,2.9393 6.3498,2.9393 Z"
-        fill="#ffffff"
-        stroke-width="0.26458"
-        id="path26"
-        style="display:inline" />
-    </g>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <title>Spectra prism spectrum icon - dark</title>
+  <defs>
+    <linearGradient id="darkBackground" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#121033"/>
+      <stop offset="1" stop-color="#1e4b66"/>
+    </linearGradient>
+    <radialGradient id="aurora" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#60e0ff" stop-opacity=".24"/>
+      <stop offset=".62" stop-color="#60e0ff" stop-opacity=".07"/>
+      <stop offset="1" stop-color="#60e0ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="darkGlass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#effcff" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#effcff" stop-opacity=".09"/>
+    </linearGradient>
+  </defs>
+  <rect x="18" y="18" width="988" height="988" rx="210" fill="url(#darkBackground)"/>
+  <ellipse cx="512" cy="520" rx="350" ry="350" fill="url(#aurora)"/>
+  <rect x="20" y="20" width="984" height="984" rx="208" fill="none" stroke="#effcff" stroke-opacity=".18" stroke-width="4"/>
+  <g fill="none" stroke-linecap="round">
+    <path d="M110 500H395" stroke="#effcff" stroke-width="20"/>
+    <path d="M520 483L952 246" stroke="#ff4d6d" stroke-opacity=".28" stroke-width="52"/>
+    <path d="M520 494L952 333" stroke="#ff8a3d" stroke-opacity=".28" stroke-width="52"/>
+    <path d="M520 505L952 420" stroke="#ffd43b" stroke-opacity=".28" stroke-width="52"/>
+    <path d="M520 516L952 507" stroke="#55df72" stroke-opacity=".28" stroke-width="52"/>
+    <path d="M520 527L952 594" stroke="#35d6f5" stroke-opacity=".28" stroke-width="52"/>
+    <path d="M520 538L952 681" stroke="#5d78ff" stroke-opacity=".28" stroke-width="52"/>
+    <path d="M520 549L952 768" stroke="#b566ff" stroke-opacity=".28" stroke-width="52"/>
+    <path d="M520 483L952 246" stroke="#ff4d6d" stroke-width="34"/>
+    <path d="M520 494L952 333" stroke="#ff8a3d" stroke-width="34"/>
+    <path d="M520 505L952 420" stroke="#ffd43b" stroke-width="34"/>
+    <path d="M520 516L952 507" stroke="#55df72" stroke-width="34"/>
+    <path d="M520 527L952 594" stroke="#35d6f5" stroke-width="34"/>
+    <path d="M520 538L952 681" stroke="#5d78ff" stroke-width="34"/>
+    <path d="M520 549L952 768" stroke="#b566ff" stroke-width="34"/>
   </g>
-  <g
-    transform="matrix(0.88,0,0,0.88,-10.906,-1.2421)"
-    id="g32"
-    style="display:inline">
-    <path
-      d="m 16.746,6.9737 2.8639,4.9609 c 0.33073,0 2.6991,-1.3672 2.8644,-1.6536 0.16536,-0.28642 0.16536,-3.0209 0,-3.3073 l -2.8644,1.6536 z"
-      fill="#dfdfdf"
-      stroke-width="0.26458"
-      id="path30"
-      style="display:inline" />
-  </g>
-  <path
-    d="m 3.8299,4.8948 c -0.14551,0.25205 -0.14553,2.6584 0,2.9104 0.14553,0.25204 2.2292,1.4552 2.5203,1.4552 V 6.35 Z"
-    fill="#d6d2d2"
-    stroke-width="0.26458"
-    id="path34"
-    style="display:inline" />
-  <metadata
-    id="metadata64">
-    <rdf:RDF>
-      <cc:Work
-        rdf:about="">
-        <dc:title>Prism Launcher Logo</dc:title>
-        <dc:date>19/10/2022</dc:date>
-        <dc:creator>
-          <cc:Agent>
-            <dc:title>Prism Launcher</dc:title>
-          </cc:Agent>
-        </dc:creator>
-        <dc:contributor>
-          <cc:Agent>
-            <dc:title>AutiOne, Boba, ely, Fulmine, gon sawa, Pankakes, tobimori, Zeke</dc:title>
-          </cc:Agent>
-        </dc:contributor>
-        <dc:source>https://github.com/PrismLauncher/PrismLauncher</dc:source>
-        <dc:publisher>
-          <cc:Agent>
-            <dc:title>Prism Launcher</dc:title>
-          </cc:Agent>
-        </dc:publisher>
-        <cc:license
-          rdf:resource="http://creativecommons.org/licenses/by-sa/4.0/" />
+  <path d="M330 650L480 292L650 650Z" fill="url(#darkGlass)" stroke="#effcff" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M480 292L487 650M330 650H650M487 531L330 650M487 531L650 650M487 531L480 292" fill="none" stroke="#effcff" stroke-opacity=".46" stroke-width="5"/>
+  <path d="M390 486H493" stroke="#ffffff" stroke-opacity=".86" stroke-width="8" stroke-linecap="round"/>
+  <path d="M405 365L520 585" stroke="#ffffff" stroke-opacity=".24" stroke-width="10" stroke-linecap="round"/>
+  <metadata>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <cc:Work rdf:about="">
+        <dc:title>Spectra prism spectrum icon - dark</dc:title>
+        <dc:creator><cc:Agent><dc:title>Spectra Contributors</dc:title></cc:Agent></dc:creator>
+        <dc:source>https://github.com/yin-nicai/Spectra-Launcher</dc:source>
+        <cc:license rdf:resource="https://creativecommons.org/licenses/by-sa/4.0/"/>
       </cc:Work>
-      <cc:License
-        rdf:about="http://creativecommons.org/licenses/by-sa/4.0/">
-        <cc:permits
-          rdf:resource="http://creativecommons.org/ns#Reproduction" />
-        <cc:permits
-          rdf:resource="http://creativecommons.org/ns#Distribution" />
-        <cc:requires
-          rdf:resource="http://creativecommons.org/ns#Notice" />
-        <cc:requires
-          rdf:resource="http://creativecommons.org/ns#Attribution" />
-        <cc:permits
-          rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
-        <cc:requires
-          rdf:resource="http://creativecommons.org/ns#ShareAlike" />
-      </cc:License>
     </rdf:RDF>
   </metadata>
 </svg>
