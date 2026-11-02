@@ -6,7 +6,7 @@
   </picture>
 </p>
 
-<h1 align="center">光谱 0.75（Spectra 0.75）</h1>
+<h1 align="center">光谱（Spectra）</h1>
 
 <p align="center">
   面向 Minecraft 的可扩展、去中心化启动器<br>
