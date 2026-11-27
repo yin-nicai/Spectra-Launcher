@@ -43,6 +43,7 @@
 
 #include "tasks/Task.h"
 
+#include "ui/TaskProgressCenter.h"
 #include "ui/widgets/SubTaskProgressBar.h"
 
 // map a value in a numeric range of an arbitrary type to between 0 and INT_MAX
@@ -142,31 +143,10 @@ int ProgressDialog::execWithTask(Task* task)
         return result;
     }
 
-    // Connect signals.
-    this->m_taskConnections.push_back(connect(task, &Task::started, this, &ProgressDialog::onTaskStarted));
-    this->m_taskConnections.push_back(connect(task, &Task::failed, this, &ProgressDialog::onTaskFailed));
-    this->m_taskConnections.push_back(connect(task, &Task::succeeded, this, &ProgressDialog::onTaskSucceeded));
-    this->m_taskConnections.push_back(connect(task, &Task::status, this, &ProgressDialog::changeStatus));
-    this->m_taskConnections.push_back(connect(task, &Task::details, this, &ProgressDialog::changeStatus));
-    this->m_taskConnections.push_back(connect(task, &Task::stepProgress, this, &ProgressDialog::changeStepProgress));
-    this->m_taskConnections.push_back(connect(task, &Task::progress, this, &ProgressDialog::changeProgress));
-    this->m_taskConnections.push_back(connect(task, &Task::aborted, this, &ProgressDialog::hide));
-    this->m_taskConnections.push_back(connect(task, &Task::abortStatusChanged, ui->skipButton, &QPushButton::setEnabled));
-    this->m_taskConnections.push_back(connect(task, &Task::abortButtonTextChanged, ui->skipButton, &QPushButton::setText));
-
-    m_is_multi_step = task->isMultiStep();
-    ui->taskProgressScrollArea->setHidden(!m_is_multi_step);
-    updateSize();
-
-    // It's a good idea to start the task after we entered the dialog's event loop :^)
-    if (!task->isRunning()) {
-        QMetaObject::invokeMethod(task, &Task::start, Qt::QueuedConnection);
-    } else {
-        changeStatus(task->getStatus());
-        changeProgress(task->getProgress(), task->getTotalProgress());
-    }
-
-    return QDialog::exec();
+    // Progress is presented by the main window. Keeping the legacy name and
+    // return value avoids changing every task caller while removing the modal
+    // progress window from all download paths.
+    return TaskProgressCenter::instance().runTask(task) ? QDialog::Accepted : QDialog::Rejected;
 }
 
 // TODO: only provide the unique_ptr overloads

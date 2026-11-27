@@ -61,6 +61,8 @@ class WorkspaceHeader;
 class WorkspaceSideMenu;
 class NewsChecker;
 class QAction;
+class QFrame;
+class QProgressBar;
 class QPushButton;
 class QToolButton;
 class InstanceProxyModel;
@@ -73,6 +75,7 @@ class BaseProfilerFactory;
 class InstanceView;
 class KonamiCode;
 class InstanceTask;
+class Task;
 class LabeledToolButton;
 
 namespace Ui {
@@ -246,6 +249,9 @@ class MainWindow : public QMainWindow {
     void updateSecondaryMenu();
     void handleSecondaryMenuAction(const QString& id);
     void updateWorkspaceTheme();
+    void buildInlineTaskProgress();
+    void showInlineTask(Task* task);
+    void finishInlineTask(Task* task, bool successful, const QString& error);
 
     void runModalTask(Task* task);
     void instanceFromInstanceTask(InstanceTask* task);
@@ -273,6 +279,14 @@ class MainWindow : public QMainWindow {
     SettingsHubPage* m_settingsPage = nullptr;
     AnimatedStackedWidget* m_contentStack = nullptr;
     WorkspaceSideMenu* m_secondaryMenu = nullptr;
+    QFrame* m_inlineTaskPanel = nullptr;
+    QLabel* m_inlineTaskStatus = nullptr;
+    QLabel* m_inlineTaskDetails = nullptr;
+    QLabel* m_inlineTaskPercent = nullptr;
+    QProgressBar* m_inlineTaskProgress = nullptr;
+    QToolButton* m_inlineTaskAbort = nullptr;
+    QPointer<Task> m_inlineTask;
+    int m_inlineTaskGeneration = 0;
     QString m_activeWorkspaceSection;
     QString m_activeSettingsPageId = QStringLiteral("overview");
     QString m_previousWorkspaceSection;

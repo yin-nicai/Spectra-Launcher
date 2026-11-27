@@ -57,6 +57,7 @@
 #include <QButtonGroup>
 #include <QCursor>
 #include <QFileDialog>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QImageReader>
@@ -69,6 +70,7 @@
 #include <QMessageBox>
 #include <QPaintEvent>
 #include <QPainter>
+#include <QProgressBar>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QShortcut>
@@ -79,6 +81,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QWidgetAction>
+#include <limits>
 #include <memory>
 
 #include <BaseInstance.h>
@@ -104,6 +107,7 @@
 #include "InstanceWindow.h"
 #include "InstancesPage.h"
 #include "SettingsHubPage.h"
+#include "TaskProgressCenter.h"
 #include "WorkspaceHeader.h"
 #include "WorkspaceSideMenu.h"
 #include "WorkspaceStyle.h"
@@ -576,6 +580,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
         workspaceLayout->setContentsMargins(0, 0, 0, 0);
         workspaceLayout->setSpacing(0);
         workspaceLayout->addWidget(m_header);
+        buildInlineTaskProgress();
         auto contentShell = new QWidget(m_workspace);
         contentShell->setObjectName(QStringLiteral("workspaceContentShell"));
         auto contentLayout = new QHBoxLayout(contentShell);
@@ -1429,23 +1434,174 @@ void MainWindow::setCatBackground(bool enabled)
     view->viewport()->repaint();
 }
 
-void MainWindow::runModalTask(Task* task)
+void MainWindow::buildInlineTaskProgress()
 {
-    connect(task, &Task::failed,
-            [this](QString reason) { CustomMessageBox::selectable(this, tr("Error"), reason, QMessageBox::Critical)->show(); });
-    connect(task, &Task::succeeded, [this, task]() {
-        QStringList warnings = task->warnings();
-        if (warnings.count()) {
-            CustomMessageBox::selectable(this, tr("Warnings"), warnings.join('\n'), QMessageBox::Warning)->show();
+    auto* workspaceLayout = qobject_cast<QVBoxLayout*>(m_workspace->layout());
+    if (!workspaceLayout) {
+        return;
+    }
+
+    m_inlineTaskPanel = new QFrame(m_workspace);
+    m_inlineTaskPanel->setObjectName(QStringLiteral("workspaceTaskProgress"));
+    auto* panelLayout = new QVBoxLayout(m_inlineTaskPanel);
+    panelLayout->setContentsMargins(18, 7, 18, 8);
+    panelLayout->setSpacing(5);
+
+    auto* statusRow = new QHBoxLayout();
+    statusRow->setContentsMargins(0, 0, 0, 0);
+    statusRow->setSpacing(10);
+    m_inlineTaskStatus = new QLabel(tr("正在处理任务…"), m_inlineTaskPanel);
+    m_inlineTaskStatus->setObjectName(QStringLiteral("workspaceTaskStatus"));
+    m_inlineTaskStatus->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    statusRow->addWidget(m_inlineTaskStatus, 1);
+
+    m_inlineTaskPercent = new QLabel(QStringLiteral("0%"), m_inlineTaskPanel);
+    m_inlineTaskPercent->setObjectName(QStringLiteral("workspaceTaskPercent"));
+    m_inlineTaskPercent->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    m_inlineTaskPercent->setMinimumWidth(48);
+    statusRow->addWidget(m_inlineTaskPercent);
+
+    m_inlineTaskAbort = new QToolButton(m_inlineTaskPanel);
+    m_inlineTaskAbort->setObjectName(QStringLiteral("pclSecondaryButton"));
+    m_inlineTaskAbort->setText(tr("中止"));
+    m_inlineTaskAbort->setMinimumHeight(26);
+    statusRow->addWidget(m_inlineTaskAbort);
+    panelLayout->addLayout(statusRow);
+
+    m_inlineTaskDetails = new QLabel(m_inlineTaskPanel);
+    m_inlineTaskDetails->setObjectName(QStringLiteral("workspaceTaskDetails"));
+    m_inlineTaskDetails->setWordWrap(false);
+    m_inlineTaskDetails->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_inlineTaskDetails->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_inlineTaskDetails->hide();
+    panelLayout->addWidget(m_inlineTaskDetails);
+
+    m_inlineTaskProgress = new QProgressBar(m_inlineTaskPanel);
+    m_inlineTaskProgress->setObjectName(QStringLiteral("workspaceTaskProgressBar"));
+    m_inlineTaskProgress->setRange(0, 1000);
+    m_inlineTaskProgress->setValue(0);
+    m_inlineTaskProgress->setTextVisible(false);
+    m_inlineTaskProgress->setMinimumHeight(22);
+    panelLayout->addWidget(m_inlineTaskProgress);
+
+    m_inlineTaskPanel->hide();
+    workspaceLayout->addWidget(m_inlineTaskPanel);
+
+    auto& center = TaskProgressCenter::instance();
+    connect(&center, &TaskProgressCenter::taskStarted, this, &MainWindow::showInlineTask);
+    connect(&center, &TaskProgressCenter::taskFinished, this, &MainWindow::finishInlineTask);
+    connect(&center, &TaskProgressCenter::taskStatusChanged, this, [this](Task* task, const QString& status) {
+        if (task != m_inlineTask) {
+            return;
+        }
+        const auto text = status.isEmpty() ? tr("正在处理任务…") : status;
+        m_inlineTaskStatus->setText(text);
+        m_inlineTaskStatus->setToolTip(text);
+    });
+    connect(&center, &TaskProgressCenter::taskDetailsChanged, this, [this](Task* task, const QString& details) {
+        if (task != m_inlineTask) {
+            return;
+        }
+        m_inlineTaskDetails->setText(details.simplified());
+        m_inlineTaskDetails->setToolTip(details);
+        m_inlineTaskDetails->setVisible(!details.trimmed().isEmpty());
+    });
+    connect(&center, &TaskProgressCenter::taskProgressChanged, this, [this](Task* task, qint64 current, qint64 total) {
+        if (task != m_inlineTask) {
+            return;
+        }
+        if (total > 0) {
+            const auto maximum = qMin<qint64>(total, std::numeric_limits<int>::max());
+            m_inlineTaskProgress->setRange(0, static_cast<int>(maximum));
+            m_inlineTaskProgress->setValue(static_cast<int>(qBound<qint64>(0, current, maximum)));
+            m_inlineTaskPercent->setText(QStringLiteral("%1%").arg(qRound(100.0 * static_cast<double>(current) / static_cast<double>(total))));
+        } else {
+            m_inlineTaskProgress->setRange(0, 0);
+            m_inlineTaskPercent->setText(QStringLiteral("…"));
         }
     });
-    connect(task, &Task::aborted, [this] {
-        CustomMessageBox::selectable(this, tr("Task aborted"), tr("The task has been aborted by the user."), QMessageBox::Information)
-            ->show();
+    connect(&center, &TaskProgressCenter::taskAbortStateChanged, this,
+            [this](Task* task, bool canAbort, const QString& actionText) {
+                if (task != m_inlineTask) {
+                    return;
+                }
+                m_inlineTaskAbort->setText(actionText.isEmpty() ? tr("中止") : actionText);
+                m_inlineTaskAbort->setEnabled(canAbort);
+                m_inlineTaskAbort->setVisible(canAbort);
+            });
+    connect(m_inlineTaskAbort, &QToolButton::clicked, this, [this] {
+        if (m_inlineTask && m_inlineTask->canAbort()) {
+            m_inlineTask->abort();
+        }
     });
-    ProgressDialog loadDialog(this);
-    loadDialog.setSkipButton(true, tr("Abort"));
-    loadDialog.execWithTask(task);
+}
+
+void MainWindow::showInlineTask(Task* task)
+{
+    if (!task || !m_inlineTaskPanel) {
+        return;
+    }
+
+    ++m_inlineTaskGeneration;
+    m_inlineTask = task;
+    m_inlineTaskPanel->show();
+    m_inlineTaskProgress->setProperty("failed", false);
+    m_inlineTaskProgress->style()->unpolish(m_inlineTaskProgress);
+    m_inlineTaskProgress->style()->polish(m_inlineTaskProgress);
+
+    const auto status = task->getStatus().isEmpty() ? tr("正在处理任务…") : task->getStatus();
+    m_inlineTaskStatus->setText(status);
+    m_inlineTaskStatus->setToolTip(status);
+    const auto details = task->getDetails();
+    m_inlineTaskDetails->setText(details.simplified());
+    m_inlineTaskDetails->setToolTip(details);
+    m_inlineTaskDetails->setVisible(!details.trimmed().isEmpty());
+    m_inlineTaskPercent->setText(QStringLiteral("0%"));
+    m_inlineTaskProgress->setRange(0, 1000);
+    m_inlineTaskProgress->setValue(0);
+    m_inlineTaskAbort->setVisible(task->canAbort());
+    m_inlineTaskAbort->setEnabled(task->canAbort());
+}
+
+void MainWindow::finishInlineTask(Task* task, bool successful, const QString& error)
+{
+    if (task != m_inlineTask || !m_inlineTaskPanel) {
+        return;
+    }
+
+    const auto generation = ++m_inlineTaskGeneration;
+    if (successful) {
+        m_inlineTaskProgress->setRange(0, 1000);
+        m_inlineTaskProgress->setValue(1000);
+        m_inlineTaskPercent->setText(QStringLiteral("100%"));
+        m_inlineTaskStatus->setText(tr("任务完成"));
+        m_inlineTaskDetails->hide();
+    } else {
+        m_inlineTaskProgress->setProperty("failed", true);
+        m_inlineTaskProgress->style()->unpolish(m_inlineTaskProgress);
+        m_inlineTaskProgress->style()->polish(m_inlineTaskProgress);
+        m_inlineTaskStatus->setText(tr("任务失败"));
+        if (!error.isEmpty()) {
+            m_inlineTaskDetails->setText(error.simplified());
+            m_inlineTaskDetails->setToolTip(error);
+            m_inlineTaskDetails->show();
+        }
+    }
+    m_inlineTaskAbort->hide();
+    m_inlineTask = nullptr;
+    QTimer::singleShot(successful ? 1200 : 6000, this, [this, generation] {
+        if (generation == m_inlineTaskGeneration) {
+            m_inlineTaskPanel->hide();
+        }
+    });
+}
+
+void MainWindow::runModalTask(Task* task)
+{
+    if (!task) {
+        return;
+    }
+    TaskProgressCenter::instance().runTask(task);
 }
 
 void MainWindow::instanceFromInstanceTask(InstanceTask* rawTask)

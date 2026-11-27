@@ -10,13 +10,11 @@
 
 #pragma once
 
-#include <QPointer>
 #include <QWidget>
 
 class BaseInstance;
 class LaunchTask;
 class QAction;
-class QDialog;
 class QLabel;
 class QMenu;
 class QProgressBar;
@@ -53,7 +51,7 @@ class HomeDashboard final : public QWidget {
     void resetLaunchProgress();
     void showLaunchProgress(const QString& status);
     void hideLaunchProgressLater(int delayMs);
-    void openLaunchDetails();
+    void toggleLaunchDetails();
     void updateLaunchDetails();
 
     BaseInstance* m_instance = nullptr;
@@ -69,11 +67,9 @@ class HomeDashboard final : public QWidget {
     QLabel* m_librarySummary = nullptr;
     QWidget* m_progressArea = nullptr;
     QLabel* m_progressText = nullptr;
+    QLabel* m_progressDetails = nullptr;
     QProgressBar* m_progressBar = nullptr;
     QToolButton* m_detailsButton = nullptr;
-    QPointer<QDialog> m_progressDialog;
-    QPointer<QLabel> m_detailsStatus;
-    QPointer<QProgressBar> m_detailsProgress;
     LaunchTask* m_launchTask = nullptr;
     int m_progressGeneration = 0;
     QToolButton* m_addInstance = nullptr;

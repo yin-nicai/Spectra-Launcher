@@ -11,7 +11,6 @@
 #include "HomeDashboard.h"
 
 #include <QAction>
-#include <QDialog>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -148,24 +147,32 @@ HomeDashboard::HomeDashboard(QWidget* parent) : QWidget(parent)
     m_detailsButton = new QToolButton(m_progressArea);
     m_detailsButton->setObjectName(QStringLiteral("pclSecondaryButton"));
     m_detailsButton->setText(tr("详情"));
-    m_detailsButton->setToolTip(tr("打开独立的启动与下载进度详情窗口。"));
+    m_detailsButton->setToolTip(tr("在实例栏内展开或收起完整进度信息。"));
     m_detailsButton->setAutoRaise(true);
     m_detailsButton->setMinimumHeight(24);
     progressHeader->addWidget(m_detailsButton);
     progressLayout->addLayout(progressHeader);
+
+    m_progressDetails = new QLabel(m_progressArea);
+    m_progressDetails->setObjectName(QStringLiteral("pclLaunchProgressDetails"));
+    m_progressDetails->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_progressDetails->setWordWrap(true);
+    m_progressDetails->hide();
+    progressLayout->addWidget(m_progressDetails);
+
     m_progressBar = new QProgressBar(m_progressArea);
     m_progressBar->setObjectName(QStringLiteral("pclLaunchProgress"));
     m_progressBar->setRange(0, 1000);
     m_progressBar->setValue(0);
     m_progressBar->setFormat(QStringLiteral("%p%"));
     m_progressBar->setTextVisible(true);
-    m_progressBar->setMinimumHeight(14);
+    m_progressBar->setMinimumHeight(22);
     progressLayout->addWidget(m_progressBar);
     m_progressArea->hide();
     panelLayout->addWidget(m_progressArea);
     outer->addWidget(instancePanel);
 
-    connect(m_detailsButton, &QToolButton::clicked, this, &HomeDashboard::openLaunchDetails);
+    connect(m_detailsButton, &QToolButton::clicked, this, &HomeDashboard::toggleLaunchDetails);
 
     auto actions = new QHBoxLayout();
     actions->setSpacing(8);
@@ -310,6 +317,12 @@ void HomeDashboard::watchLaunchTask(LaunchTask* task)
             showLaunchProgress(status);
         }
     });
+    connect(m_launchTask, &Task::details, this, [this](const QString& details) {
+        if (m_progressDetails) {
+            m_progressDetails->setText(details);
+            m_progressDetails->setToolTip(details);
+        }
+    });
     connect(m_launchTask, &Task::progress, this, [this](qint64 current, qint64 total) {
         showLaunchProgress(m_progressText->text());
         if (total > 0) {
@@ -364,8 +377,12 @@ void HomeDashboard::resetLaunchProgress()
     if (m_status) {
         m_status->show();
     }
-    if (m_progressDialog) {
-        m_progressDialog->close();
+    if (m_progressDetails) {
+        m_progressDetails->hide();
+        m_progressDetails->clear();
+    }
+    if (m_detailsButton) {
+        m_detailsButton->setText(tr("详情"));
     }
 }
 
@@ -396,77 +413,36 @@ void HomeDashboard::hideLaunchProgressLater(int delayMs)
         m_progressBar->style()->polish(m_progressBar);
         m_progressText->style()->unpolish(m_progressText);
         m_progressText->style()->polish(m_progressText);
-        if (m_progressDialog) {
-            m_progressDialog->close();
-        }
+        m_progressDetails->hide();
+        m_detailsButton->setText(tr("详情"));
     });
 }
 
-void HomeDashboard::openLaunchDetails()
+void HomeDashboard::toggleLaunchDetails()
 {
-    if (!m_launchTask) {
+    if (!m_progressDetails) {
         return;
     }
-    if (m_progressDialog) {
-        m_progressDialog->show();
-        m_progressDialog->raise();
-        m_progressDialog->activateWindow();
-        return;
-    }
-
-    auto* dialog = new QDialog(window(), Qt::Dialog);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setWindowModality(Qt::NonModal);
-    dialog->setWindowTitle(tr("启动与下载详情"));
-    dialog->resize(560, 190);
-
-    auto* layout = new QVBoxLayout(dialog);
-    layout->setContentsMargins(18, 16, 18, 16);
-    layout->setSpacing(10);
-
-    auto* hint = new QLabel(tr("进度会持续显示在实例栏；此窗口仅在你主动打开时出现。"), dialog);
-    hint->setObjectName(QStringLiteral("pclMutedText"));
-    hint->setWordWrap(true);
-    layout->addWidget(hint);
-
-    m_detailsStatus = new QLabel(dialog);
-    m_detailsStatus->setObjectName(QStringLiteral("pclLaunchProgressText"));
-    m_detailsStatus->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    m_detailsStatus->setWordWrap(true);
-    layout->addWidget(m_detailsStatus);
-
-    m_detailsProgress = new QProgressBar(dialog);
-    m_detailsProgress->setObjectName(QStringLiteral("pclLaunchProgress"));
-    m_detailsProgress->setTextVisible(true);
-    m_detailsProgress->setMinimumHeight(16);
-    layout->addWidget(m_detailsProgress);
-    layout->addStretch(1);
-
-    m_progressDialog = dialog;
-    updateLaunchDetails();
-    dialog->show();
+    const bool show = !m_progressDetails->isVisible();
+    m_progressDetails->setVisible(show);
+    m_detailsButton->setText(show ? tr("收起") : tr("详情"));
 }
 
 void HomeDashboard::updateLaunchDetails()
 {
-    if (!m_progressDialog || !m_detailsStatus || !m_detailsProgress || !m_launchTask) {
+    if (!m_progressDetails || !m_progressText) {
         return;
     }
 
-    QString status = m_progressText ? m_progressText->text() : tr("正在准备启动…");
+    QString status = m_progressText->text();
     if (m_launchTask->getState() == Task::State::AbortedByUser || m_launchTask->getState() == Task::State::Failed) {
         const auto failure = m_launchTask->failReason();
         if (!failure.isEmpty()) {
             status += QStringLiteral("\n") + failure;
         }
     }
-    m_detailsStatus->setText(status);
-
-    if (m_progressBar) {
-        m_detailsProgress->setRange(m_progressBar->minimum(), m_progressBar->maximum());
-        m_detailsProgress->setValue(m_progressBar->value());
-        m_detailsProgress->setFormat(m_progressBar->format());
-    }
+    m_progressDetails->setText(status);
+    m_progressDetails->setToolTip(status);
 }
 
 void HomeDashboard::refresh()

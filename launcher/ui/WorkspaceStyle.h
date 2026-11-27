@@ -274,26 +274,64 @@ QWidget#pclBrandBlock {
 QWidget#pclLaunchProgressArea {
     background: transparent;
 }
+QFrame#workspaceTaskProgress {
+    background: rgba(15, 18, 24, 225);
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 30);
+}
+QLabel#workspaceTaskStatus {
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 18px;
+}
+QLabel#workspaceTaskDetails,
+QLabel#pclLaunchProgressDetails {
+    color: rgba(255, 255, 255, 180);
+    font-size: 10px;
+    min-height: 16px;
+}
+QLabel#workspaceTaskPercent {
+    color: #8dc8ff;
+    font-size: 11px;
+    font-weight: 600;
+    min-height: 18px;
+}
 QLabel#pclLaunchProgressText {
     color: rgba(255, 255, 255, 205);
     font-size: 11px;
+    min-height: 18px;
 }
 QLabel#pclLaunchProgressText[failed="true"] {
     color: #ff8f8f;
 }
 QProgressBar#pclLaunchProgress {
-    min-height: 14px;
-    max-height: 14px;
+    min-height: 20px;
+    max-height: 22px;
     color: #ffffff;
     background: rgba(255, 255, 255, 24);
     border: 0;
-    border-radius: 7px;
-    font-size: 9px;
+    border-radius: 10px;
+    font-size: 10px;
     text-align: center;
 }
 QProgressBar#pclLaunchProgress::chunk {
     background: #318ce7;
-    border-radius: 7px;
+    border-radius: 10px;
+}
+QProgressBar#workspaceTaskProgressBar {
+    min-height: 20px;
+    max-height: 22px;
+    background: rgba(255, 255, 255, 24);
+    border: 0;
+    border-radius: 10px;
+}
+QProgressBar#workspaceTaskProgressBar::chunk {
+    background: #318ce7;
+    border-radius: 10px;
+}
+QProgressBar#workspaceTaskProgressBar[failed="true"]::chunk {
+    background: #c42b1c;
 }
 QProgressBar#pclLaunchProgress[failed="true"]::chunk {
     background: #c42b1c;
@@ -506,11 +544,25 @@ QCommandLinkButton { color: #f8fafc; border-radius: 10px; }
 QTreeView, QListView, QTableView { border-radius: 10px; }
 QProgressBar#pclLaunchProgress {
     background: rgba(255, 255, 255, 20);
-    border-radius: 7px;
+    border-radius: 10px;
 }
 QProgressBar#pclLaunchProgress::chunk {
     background: #0067c0;
-    border-radius: 7px;
+    border-radius: 10px;
+}
+QProgressBar {
+    min-height: 18px;
+    max-height: 20px;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 22);
+    border: 0;
+    border-radius: 9px;
+    font-size: 10px;
+    text-align: center;
+}
+QProgressBar::chunk {
+    background: #0067c0;
+    border-radius: 9px;
 }
 QProgressBar#pclLaunchProgress[failed="true"]::chunk {
     background: #c42b1c;
@@ -717,14 +769,17 @@ QToolTip {
     color: palette(tooltip-text);
 }
 QProgressBar {
-    min-height: 8px;
-    max-height: 8px;
+    min-height: 18px;
+    max-height: 20px;
     border: 0;
-    border-radius: 0;
+    border-radius: 9px;
     background: palette(alternate-base);
+    font-size: 10px;
+    text-align: center;
 }
 QProgressBar::chunk {
     background: palette(highlight);
+    border-radius: 9px;
 }
 )QSS");
     if (themeId.trimmed().compare(QStringLiteral("windows11"), Qt::CaseInsensitive) == 0) {

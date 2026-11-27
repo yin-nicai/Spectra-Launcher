@@ -778,6 +778,8 @@ SET(LAUNCHER_SOURCES
     ui/WorkspaceHeader.cpp
     ui/WorkspaceSideMenu.h
     ui/WorkspaceSideMenu.cpp
+    ui/TaskProgressCenter.h
+    ui/TaskProgressCenter.cpp
     ui/WorkspaceStyle.h
     ui/InstanceWindow.h
     ui/InstanceWindow.cpp
