@@ -82,7 +82,7 @@ AppearanceWidget::AppearanceWidget(bool themesOnly, QWidget* parent)
     connect(m_ui->iconsFolder, &QPushButton::clicked, this,
             [] { DesktopServices::openPath(APPLICATION->themeManager()->getIconThemesFolder().path()); });
     connect(m_ui->widgetStyleFolder, &QPushButton::clicked, this,
-            [] { DesktopServices::openPath(APPLICATION->themeManager()->getApplicationThemesFolder().path()); });
+            [] { DesktopServices::openPath(APPLICATION->themeManager()->getThemePacksFolder().path(), true); });
     connect(m_ui->catPackFolder, &QPushButton::clicked, this,
             [] { DesktopServices::openPath(APPLICATION->themeManager()->getCatPacksFolder().path()); });
     connect(m_ui->reloadThemesButton, &QPushButton::pressed, this, &AppearanceWidget::loadThemeSettings);

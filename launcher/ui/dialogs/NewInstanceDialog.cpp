@@ -65,8 +65,11 @@
 NewInstanceDialog::NewInstanceDialog(const QString& initialGroup,
                                      const QString& url,
                                      const QMap<QString, QString>& extra_info,
-                                     QWidget* parent)
-    : QDialog(parent), ui(new Ui::NewInstanceDialog)
+                                     QWidget* parent,
+                                     const QString& requestedPageId)
+    : QDialog(parent)
+    , ui(new Ui::NewInstanceDialog)
+    , m_requestedPageId(url.isEmpty() ? requestedPageId : QStringLiteral("import"))
 {
     ui->setupUi(this);
     setStyleSheet(WorkspaceStyle::styleSheetForTheme(APPLICATION->settings()->get("ApplicationTheme").toString()));
@@ -91,7 +94,7 @@ NewInstanceDialog::NewInstanceDialog(const QString& initialGroup,
     // move this below.
     m_buttons = new QDialogButtonBox(QDialogButtonBox::Help | QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
 
-    m_container = new PageContainer(this, {}, this);
+    m_container = new PageContainer(this, m_requestedPageId, this);
     m_container->useSidebarStyle(false);
     m_container->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Expanding);
     m_container->layout()->setContentsMargins(0, 0, 0, 0);
@@ -176,6 +179,9 @@ QList<BasePage*> NewInstanceDialog::getPages()
     context.parent = this;
     for (const auto* provider : APPLICATION->plugins()->resourceProviders().enabledInOrder()) {
         for (const auto& spec : provider->pages(context)) {
+            if (!m_requestedPageId.isEmpty() && spec.id != m_requestedPageId) {
+                continue;
+            }
             if (!spec.createPage) {
                 continue;
             }
@@ -265,6 +271,19 @@ void NewInstanceDialog::selectPage(const QString& pageId)
     if (m_container) {
         m_container->selectPage(pageId);
     }
+}
+
+void NewInstanceDialog::setNavigationVisible(bool visible)
+{
+    if (m_container) {
+        m_container->setPageListVisible(visible);
+    }
+}
+
+QString NewInstanceDialog::selectedPageId() const
+{
+    const auto* page = m_container ? m_container->selectedPage() : nullptr;
+    return page ? page->id() : QString();
 }
 
 InstanceTask* NewInstanceDialog::extractTask()

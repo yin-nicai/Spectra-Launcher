@@ -48,6 +48,31 @@ SystemTheme::SystemTheme(const QString& styleName, const QPalette& defaultPalett
 {
     m_themeName = isDefaultTheme ? "system" : styleName;
     m_widgetTheme = styleName;
+    if (m_themeName == QStringLiteral("windows11")) {
+        QPalette darkPalette;
+        darkPalette.setColor(QPalette::Window, QColor(24, 26, 30));
+        darkPalette.setColor(QPalette::WindowText, QColor(244, 246, 249));
+        darkPalette.setColor(QPalette::Base, QColor(17, 19, 23));
+        darkPalette.setColor(QPalette::AlternateBase, QColor(31, 34, 40));
+        darkPalette.setColor(QPalette::ToolTipBase, QColor(244, 246, 249));
+        darkPalette.setColor(QPalette::ToolTipText, QColor(17, 19, 23));
+        darkPalette.setColor(QPalette::Text, QColor(244, 246, 249));
+        darkPalette.setColor(QPalette::Button, QColor(38, 41, 47));
+        darkPalette.setColor(QPalette::ButtonText, QColor(244, 246, 249));
+        darkPalette.setColor(QPalette::BrightText, QColor(255, 99, 110));
+        darkPalette.setColor(QPalette::Link, QColor(100, 181, 246));
+        darkPalette.setColor(QPalette::Highlight, QColor(0, 103, 192));
+        darkPalette.setColor(QPalette::HighlightedText, Qt::white);
+        darkPalette.setColor(QPalette::PlaceholderText, QColor(150, 157, 168));
+        darkPalette.setColor(QPalette::Light, QColor(65, 70, 80));
+        darkPalette.setColor(QPalette::Midlight, QColor(50, 54, 63));
+        darkPalette.setColor(QPalette::Mid, QColor(68, 73, 84));
+        darkPalette.setColor(QPalette::Dark, QColor(10, 12, 15));
+        darkPalette.setColor(QPalette::Shadow, QColor(5, 6, 8));
+        m_colorPalette = fadeInactive(darkPalette, 0.5, QColor(24, 26, 30));
+        return;
+    }
+
     // NOTE: SystemTheme is reconstructed on page refresh. We can't accurately determine the system palette here
     // See also S_NATIVE_STYLES comment
     if (S_NATIVE_STYLES.contains(m_themeName)) {
@@ -62,7 +87,7 @@ SystemTheme::SystemTheme(const QString& styleName, const QPalette& defaultPalett
 void SystemTheme::apply(bool initial)
 {
     // See S_NATIVE_STYLES comment
-    if (initial && S_NATIVE_STYLES.contains(m_themeName)) {
+    if (initial && m_themeName != QStringLiteral("windows11") && S_NATIVE_STYLES.contains(m_themeName)) {
         QApplication::setStyle(new HintOverrideProxyStyle(QStyleFactory::create(qtTheme())));
         return;
     }

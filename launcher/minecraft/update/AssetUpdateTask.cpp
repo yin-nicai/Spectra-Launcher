@@ -24,7 +24,8 @@ void AssetUpdateTask::executeTask()
     auto assets = profile->getMinecraftAssets();
     QUrl indexUrl = assets->url;
     QString localPath = assets->id + ".json";
-    auto job = makeShared<NetJob>(tr("Asset index for %1").arg(m_inst->name()), APPLICATION->network());
+    auto job = makeShared<NetJob>(tr("Asset index for %1").arg(m_inst->name()), APPLICATION->network(),
+                                  MinecraftDownloads::recommendedConcurrency());
 
     auto metacache = APPLICATION->metacache();
     auto entry = metacache->resolveEntry("asset_indexes", localPath);

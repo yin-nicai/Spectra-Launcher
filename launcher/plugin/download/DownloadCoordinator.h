@@ -15,6 +15,8 @@
 
 namespace MinecraftDownloads {
 
+int recommendedConcurrency();
+
 Net::Download::Ptr makeCached(const Plugins::DownloadRequest& request,
                               MetaEntryPtr entry,
                               Net::Download::Options options = Net::Download::Option::NoOptions);

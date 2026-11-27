@@ -43,7 +43,7 @@ QString BrightTheme::id()
 
 QString BrightTheme::name()
 {
-    return QObject::tr("Bright");
+    return QObject::tr("扁平浅");
 }
 
 QPalette BrightTheme::colorScheme()
@@ -59,9 +59,9 @@ QPalette BrightTheme::colorScheme()
     brightPalette.setColor(QPalette::Button, QColor(249, 249, 249));
     brightPalette.setColor(QPalette::ButtonText, Qt::black);
     brightPalette.setColor(QPalette::BrightText, Qt::red);
-    brightPalette.setColor(QPalette::Link, QColor(37, 137, 164));
-    brightPalette.setColor(QPalette::Highlight, QColor(137, 207, 84));
-    brightPalette.setColor(QPalette::HighlightedText, Qt::black);
+    brightPalette.setColor(QPalette::Link, QColor(30, 115, 210));
+    brightPalette.setColor(QPalette::Highlight, QColor(35, 120, 215));
+    brightPalette.setColor(QPalette::HighlightedText, Qt::white);
     return fadeInactive(brightPalette, fadeAmount(), fadeColor());
 }
 

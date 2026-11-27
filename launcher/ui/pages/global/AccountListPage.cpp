@@ -59,6 +59,8 @@ AccountListPage::AccountListPage(QWidget* parent) : QMainWindow(parent), ui(new 
            "Please support genuine Minecraft."));
     ui->listView->setEmptyMode(VersionListView::String);
     ui->listView->setContextMenuPolicy(Qt::CustomContextMenu);
+    ui->actionManageSkins->setVisible(false);
+    ui->toolBar->removeAction(ui->actionManageSkins);
 
     m_accounts = APPLICATION->accounts();
 

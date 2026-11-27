@@ -72,6 +72,11 @@ void PageDialog::selectPage(const QString& pageId)
     m_container->selectPage(pageId);
 }
 
+void PageDialog::setNavigationVisible(bool visible)
+{
+    m_container->setPageListVisible(visible);
+}
+
 void PageDialog::accept()
 {
     if (handleClose())

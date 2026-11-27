@@ -15,6 +15,8 @@
 #include <QJsonDocument>
 #include <QSet>
 
+#include <algorithm>
+
 #include "directory/DirectoryStrategy.h"
 #include "download/DownloadSources.h"
 #include "metadata/MetadataSources.h"
@@ -96,7 +98,7 @@ void PluginSystem::registerBuiltins()
     m_downloadSources.registerFactory({
         QStringLiteral("priority-mirrors"),
         tr("Minecraft mirror priority"),
-        tr("Try the official URL first, then configured foreign mirrors, then configured domestic mirrors."),
+        tr("Use official and configured mirror fallback. Domestic priority can distribute parallel Minecraft downloads across mirrors."),
         true,
         [](const QVariantMap& options) { return std::make_unique<PriorityDownloadSource>(options); },
     });
@@ -197,12 +199,32 @@ QList<DownloadCandidate> PluginSystem::downloadCandidates(const DownloadRequest&
             result.append(std::move(candidate));
         }
     }
+    std::stable_sort(result.begin(), result.end(), [](const DownloadCandidate& lhs, const DownloadCandidate& rhs) {
+        return lhs.priority < rhs.priority;
+    });
     return result;
 }
 
 QString PluginSystem::validateDownloadUrl(const QUrl& url) const
 {
     return DownloadPolicy(*this).rejectionReason(url);
+}
+
+int PluginSystem::minecraftDownloadConcurrency(int requested) const
+{
+    int effective = qBound(1, requested > 0 ? requested : 6, 32);
+    for (const auto& state : m_downloadSources.currentStates()) {
+        if (!state.enabled || state.id != QStringLiteral("priority-mirrors")) {
+            continue;
+        }
+        if (state.options.value(QStringLiteral("domesticMirrors")).toStringList().isEmpty() ||
+            !state.options.value(QStringLiteral("preferDomestic"), true).toBool()) {
+            continue;
+        }
+        const auto domesticConcurrency = qBound(2, state.options.value(QStringLiteral("domesticConcurrency"), 12).toInt(), 32);
+        effective = qMax(effective, domesticConcurrency);
+    }
+    return effective;
 }
 
 }  // namespace Plugins

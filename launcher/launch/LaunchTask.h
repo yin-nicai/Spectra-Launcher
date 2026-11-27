@@ -113,6 +113,8 @@ class LaunchTask : public Task {
 
    private: /*methods */
     void finalizeSteps(bool successful, const QString& error);
+    void attachStep(LaunchStep* step);
+    void onStepProgress(qint64 current, qint64 total);
 
    protected:
     bool parseXmlLogs(QString const& line, MessageLevel level);

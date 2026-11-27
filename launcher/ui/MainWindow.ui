@@ -716,10 +716,10 @@
     <iconset theme="viewfolder"/>
    </property>
    <property name="text">
-    <string>&amp;Widget Themes</string>
+    <string>ZIP &amp;主题包</string>
    </property>
    <property name="toolTip">
-    <string>Open the widget themes folder in a file browser.</string>
+    <string>打开 ZIP 主题包文件夹。</string>
    </property>
   </action>
   <action name="actionViewIconThemeFolder">

@@ -75,6 +75,7 @@ void LaunchTask::executeTask()
     m_instance->setCrashed(false);
     if (!m_steps.size()) {
         state = LaunchTask::Finished;
+        setProgress(1000, 1000);
         emitSucceeded();
         return;
     }
@@ -93,7 +94,9 @@ void LaunchTask::onStepFinished()
     // initial -> just start the first step
     if (currentStep == -1) {
         currentStep++;
-        m_steps[currentStep]->start();
+        auto step = m_steps[currentStep];
+        attachStep(step.get());
+        step->start();
         return;
     }
 
@@ -105,6 +108,7 @@ void LaunchTask::onStepFinished()
         } else {
             currentStep++;
             step = m_steps[currentStep];
+            attachStep(step.get());
             step->start();
         }
     } else {
@@ -118,10 +122,35 @@ void LaunchTask::finalizeSteps(bool successful, const QString& error)
         m_steps[step]->finalize();
     }
     if (successful) {
+        setProgress(1000, 1000);
+        setStatus(tr("启动完成"));
         emitSucceeded();
     } else {
+        setStatus(tr("启动失败"));
         emitFailed(error);
     }
+}
+
+void LaunchTask::attachStep(LaunchStep* step)
+{
+    connect(step, &Task::status, this, &Task::setStatus);
+    connect(step, &Task::details, this, &Task::setDetails);
+    connect(step, &Task::progress, this, &LaunchTask::onStepProgress);
+    setStatus(step->getStatus());
+    setDetails(step->getDetails());
+    onStepProgress(step->getProgress(), step->getTotalProgress());
+}
+
+void LaunchTask::onStepProgress(qint64 current, qint64 total)
+{
+    if (m_steps.isEmpty() || currentStep < 0) {
+        return;
+    }
+
+    const auto safeTotal = total > 0 ? total : 1;
+    const auto stepFraction = qBound(0.0, static_cast<double>(current) / static_cast<double>(safeTotal), 1.0);
+    const auto overall = ((static_cast<double>(currentStep) + stepFraction) / static_cast<double>(m_steps.size())) * 1000.0;
+    setProgress(qRound(overall), 1000);
 }
 
 void LaunchTask::onProgressReportingRequested()

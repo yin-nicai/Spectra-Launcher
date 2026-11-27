@@ -1,0 +1,16 @@
+Spectra launcher wallpaper source
+=================================
+
+Source page:
+https://wallpapers.com/wallpapers/beautiful-minecraft-pink-mountain-jeiwb83n9yvg474y.html
+
+Original image URL:
+https://wallpapers.com/images/hd/beautiful-minecraft-pink-mountain-jeiwb83n9yvg474y.jpg
+
+Resolution:
+3840 x 2160
+
+The image is bundled as the launcher's main-window background at the project
+owner's request. Minecraft and related artwork remain the property of their
+respective rights holders. Spectra is not affiliated with or endorsed by
+Mojang Studios or Microsoft.

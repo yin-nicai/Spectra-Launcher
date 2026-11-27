@@ -19,6 +19,21 @@ LAUNCHER_ENVNAME=@Launcher_ENVName@
 LAUNCHER_DIR="$(dirname "$(readlink -f "$0")")"
 echo "Launcher Dir: ${LAUNCHER_DIR}"
 
+if [[ -x "${LAUNCHER_DIR}/.Spectra/runtime/usr/bin/${LAUNCHER_NAME}" ]]; then
+    LAUNCHER_PREFIX="${LAUNCHER_DIR}/.Spectra/runtime/usr"
+elif [[ -x "${LAUNCHER_DIR}/usr/bin/${LAUNCHER_NAME}" ]]; then
+    LAUNCHER_PREFIX="${LAUNCHER_DIR}/usr"
+elif [[ -x "${LAUNCHER_DIR}/bin/${LAUNCHER_NAME}" ]]; then
+    LAUNCHER_PREFIX="${LAUNCHER_DIR}"
+else
+    printerror "Could not find the ${LAUNCHER_NAME} executable.\n"
+    exit 1
+fi
+
+export LD_LIBRARY_PATH="${LAUNCHER_PREFIX}/lib/spectra${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export QT_PLUGIN_PATH="${LAUNCHER_PREFIX}/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="${LAUNCHER_PREFIX}/plugins/platforms"
+
 # Makes the launcher use portals for file picking
 export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 
@@ -28,11 +43,11 @@ if [[ -f "${LAUNCHER_DIR}/sharun" ]]; then
 fi
 
 # Just to be sure...
-chmod +x "${LAUNCHER_DIR}/bin/${LAUNCHER_NAME}"
+chmod +x "${LAUNCHER_PREFIX}/bin/${LAUNCHER_NAME}"
 
-ARGS=("${LAUNCHER_DIR}/${LAUNCHER_NAME}" "${LAUNCHER_DIR}/bin/${LAUNCHER_NAME}")
+ARGS=("${LAUNCHER_DIR}/${LAUNCHER_NAME}" "${LAUNCHER_PREFIX}/bin/${LAUNCHER_NAME}")
 
-if [ -f portable.txt ]; then
+if [[ -f "${LAUNCHER_DIR}/.Spectra/runtime/portable.mode" ]]; then
     ARGS+=("-d" "${LAUNCHER_DIR}")
 fi
 

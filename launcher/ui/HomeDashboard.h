@@ -10,13 +10,17 @@
 
 #pragma once
 
+#include <QPointer>
 #include <QWidget>
 
 class BaseInstance;
+class LaunchTask;
 class QAction;
-class QCommandLinkButton;
+class QDialog;
 class QLabel;
 class QMenu;
+class QProgressBar;
+class QPushButton;
 class QToolButton;
 
 class HomeDashboard final : public QWidget {
@@ -45,21 +49,33 @@ class HomeDashboard final : public QWidget {
    private:
     void refresh();
     void refreshLibrarySummary();
+    void watchLaunchTask(LaunchTask* task);
+    void resetLaunchProgress();
+    void showLaunchProgress(const QString& status);
+    void hideLaunchProgressLater(int delayMs);
+    void openLaunchDetails();
+    void updateLaunchDetails();
 
     BaseInstance* m_instance = nullptr;
     QLabel* m_welcome = nullptr;
     QLabel* m_subtitle = nullptr;
+    QLabel* m_productLogo = nullptr;
+    QLabel* m_productName = nullptr;
+    QLabel* m_productVersion = nullptr;
     QLabel* m_instanceIcon = nullptr;
     QLabel* m_instanceName = nullptr;
     QLabel* m_instanceDescription = nullptr;
     QLabel* m_status = nullptr;
-    QLabel* m_totalInstances = nullptr;
-    QLabel* m_totalInstancesCaption = nullptr;
-    QLabel* m_runningInstances = nullptr;
-    QLabel* m_runningInstancesCaption = nullptr;
-    QLabel* m_accountMetric = nullptr;
-    QLabel* m_accountMetricCaption = nullptr;
-    QLabel* m_quickTitle = nullptr;
+    QLabel* m_librarySummary = nullptr;
+    QWidget* m_progressArea = nullptr;
+    QLabel* m_progressText = nullptr;
+    QProgressBar* m_progressBar = nullptr;
+    QToolButton* m_detailsButton = nullptr;
+    QPointer<QDialog> m_progressDialog;
+    QPointer<QLabel> m_detailsStatus;
+    QPointer<QProgressBar> m_detailsProgress;
+    LaunchTask* m_launchTask = nullptr;
+    int m_progressGeneration = 0;
     QToolButton* m_addInstance = nullptr;
     QToolButton* m_launch = nullptr;
     QToolButton* m_stop = nullptr;
@@ -67,7 +83,7 @@ class HomeDashboard final : public QWidget {
     QToolButton* m_memory = nullptr;
     QToolButton* m_folder = nullptr;
     QToolButton* m_more = nullptr;
-    QCommandLinkButton* m_downloads = nullptr;
-    QCommandLinkButton* m_accounts = nullptr;
-    QCommandLinkButton* m_settings = nullptr;
+    QPushButton* m_downloads = nullptr;
+    QPushButton* m_accounts = nullptr;
+    QPushButton* m_settings = nullptr;
 };

@@ -1,4 +1,3 @@
-This file enables the portable mode for the launcher.
+This file is retained for legacy portable installations.
 
-If this file is present in the root directory of the launcher, it will store all data here. Otherwise it will store your data in your appdata directory.
-You can safely delete this file, if you don't want the launcher to store your data here.
+Spectra portable packages now use .Spectra/runtime/portable.mode. Launcher data is stored in .Spectra and game data is stored in .Minecraft.

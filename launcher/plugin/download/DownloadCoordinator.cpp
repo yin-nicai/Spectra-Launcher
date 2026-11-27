@@ -14,6 +14,7 @@
 
 #include "Application.h"
 #include "plugin/PluginSystem.h"
+#include "settings/SettingsObject.h"
 
 namespace {
 
@@ -49,6 +50,12 @@ Net::Download::Ptr configureDownload(Net::Download::Ptr download, const Plugins:
 }  // namespace
 
 namespace MinecraftDownloads {
+
+int recommendedConcurrency()
+{
+    const auto configured = APPLICATION->settings()->get("NumberOfConcurrentDownloads").toInt();
+    return APPLICATION->plugins()->minecraftDownloadConcurrency(configured);
+}
 
 Net::Download::Ptr makeCached(const Plugins::DownloadRequest& request, MetaEntryPtr entry, Net::Download::Options options)
 {

@@ -4,6 +4,25 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [1.0] - 2026-11-27
+
+### 新增
+
+- 重构为 PCL 风格扁平顶部菜单和 Minecraft 主图首页。
+- 默认主题统一为深色圆角 Windows 11，并支持 `.Spectra/themepacks` 中的 ZIP 主题包。
+- 游戏数据统一使用 `.Minecraft`，启动器数据统一使用 `.Spectra`，并提供旧目录检测与安全迁移。
+- 便携包根目录只保留主程序和 `.Spectra`、`.Minecraft` 文件夹，全部 Qt 运行库与插件进入 `.Spectra/runtime`。
+- 新增国内镜像优先加速：多镜像轮转分摊连接，Minecraft 文件可独立提升并行下载数。
+- 实例栏新增 PCL 风格启动进度条，汇总启动步骤、当前状态和整体百分比。
+- 一级页面切换加入横向滑动叠化动画，并在内容区左侧提供随页面变化的二级菜单；设置、下载和实例编辑统一在右侧内容区切换。
+- 顶部导航按钮使用真实控件指示块平滑移动；页面切换直接移动实际界面控件，不再使用截图叠层。
+- 图标资源只保留 iOS 图标集并统一显示为“默认”，外观/主题设置和皮肤管理入口已移除。
+
+### 变更
+
+- 移除旧侧栏、旧工具栏和重复主题入口。
+- 用户目录、账户和下载源入口保持单窗口操作。
+
 ## [0.75] - 2026-10-30
 
 ### 新增
@@ -63,3 +82,4 @@
 
 [0.0.1]: https://github.com/yin-nicai/Spectra-Launcher/releases/tag/v0.0.1
 [0.75]: https://github.com/yin-nicai/Spectra-Launcher/releases/tag/v0.75
+[1.0]: https://github.com/yin-nicai/Spectra-Launcher/releases/tag/v1.0

@@ -59,6 +59,7 @@ configure_file(${Launcher_APP_BINARY_NAME}.ico ${Launcher_APP_BINARY_NAME}.ico C
 configure_file(${Launcher_SVGFileName} ${Launcher_SVGFileName} COPYONLY)
 configure_file(${Launcher_AppID}.logo.svg ${Launcher_AppID}.logo.svg COPYONLY)
 configure_file(${Launcher_AppID}.logo-darkmode.svg ${Launcher_AppID}.logo-darkmode.svg COPYONLY)
+configure_file(${Launcher_AppID}.wallpaper.png ${Launcher_AppID}.wallpaper.png COPYONLY)
 configure_file(${Launcher_AppID}.mime.xml ${Launcher_AppID}.xml COPYONLY)
 
 if(MSVC)

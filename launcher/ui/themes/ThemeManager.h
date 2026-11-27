@@ -20,12 +20,14 @@
 
 #include <QDir>
 #include <QLoggingCategory>
+#include <QSet>
 #include <QString>
 #include <memory>
 
 #include "IconTheme.h"
 #include "ui/themes/CatPack.h"
 #include "ui/themes/ITheme.h"
+#include "ui/themes/ThemePack.h"
 
 inline auto themeDebugLog() {
     return qDebug() << "[Theme]";
@@ -45,10 +47,13 @@ class ThemeManager {
     bool isValidApplicationTheme(const QString& id);
     QDir getIconThemesFolder();
     QDir getApplicationThemesFolder();
+    QDir getThemePacksFolder();
     QDir getCatPacksFolder();
+    QList<IThemePack*> themePacks() const;
     void applyCurrentlySelectedTheme(bool initial = false);
     void setIconTheme(const QString& name);
     void setApplicationTheme(const QString& name, bool initial = false);
+    ITheme* getApplicationTheme(const QString& name);
 
     /// @brief Returns the background based on selected and with events (Birthday, XMas, etc.)
     /// @param catName Optional, if you need a specific background.
@@ -62,10 +67,13 @@ class ThemeManager {
 
    private:
     std::map<QString, std::unique_ptr<ITheme>> m_themes;
+    QSet<QString> m_hiddenThemeIds;
     std::map<QString, IconTheme> m_icons;
     QDir m_iconThemeFolder{"iconthemes"};
     QDir m_applicationThemeFolder{"themes"};
+    QDir m_themePacksFolder{"themepacks"};
     QDir m_catPacksFolder{"catpacks"};
+    std::unique_ptr<ThemePackRegistry> m_themePackRegistry;
     std::map<QString, std::unique_ptr<CatPack>> m_catPacks;
     QPalette m_defaultPalette;
     QString m_defaultStyle;
@@ -74,7 +82,6 @@ class ThemeManager {
     void initializeThemes();
     void initializeCatPacks();
     QString addTheme(std::unique_ptr<ITheme> theme);
-    ITheme* getTheme(QString themeId);
     QString addIconTheme(IconTheme theme);
     QString addCatPack(std::unique_ptr<CatPack> catPack);
     void initializeIcons();
@@ -91,6 +98,5 @@ class ThemeManager {
     NSObject* m_windowTitlebarObserver = nullptr;
 #endif
 
-    const QStringList builtinIcons{"pe_colored", "pe_light", "pe_dark", "pe_blue",    "breeze_light", "breeze_dark",
-                                   "OSX",        "iOS",      "flat",    "flat_white", "multimc"};
+    const QStringList builtinIcons{ "default" };
 };

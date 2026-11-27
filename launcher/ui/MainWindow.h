@@ -51,17 +51,17 @@
 #include "minecraft/auth/MinecraftAccount.h"
 
 class LaunchController;
+class AnimatedStackedWidget;
 class DownloadsPage;
 class HomeDashboard;
 class InstancesPage;
-class NavigationSidebar;
 class AccountsPage;
 class SettingsHubPage;
 class WorkspaceHeader;
+class WorkspaceSideMenu;
 class NewsChecker;
 class QAction;
 class QPushButton;
-class QStackedWidget;
 class QToolButton;
 class InstanceProxyModel;
 class LabeledToolButton;
@@ -242,6 +242,9 @@ class MainWindow : public QMainWindow {
     void setInstanceActionsEnabled(bool enabled);
     void refreshInstanceSelector();
     void buildWorkspaceMenus();
+    void showWorkspaceSection(const QString& section);
+    void updateSecondaryMenu();
+    void handleSecondaryMenuAction(const QString& id);
     void updateWorkspaceTheme();
 
     void runModalTask(Task* task);
@@ -263,13 +266,18 @@ class MainWindow : public QMainWindow {
     QToolButton* helpMenuButton = nullptr;
     WorkspaceHeader* m_header = nullptr;
     QWidget* m_workspace = nullptr;
-    NavigationSidebar* m_navigation = nullptr;
     HomeDashboard* m_dashboard = nullptr;
     DownloadsPage* m_downloadsPage = nullptr;
     InstancesPage* m_instancesPage = nullptr;
     AccountsPage* m_accountsPage = nullptr;
     SettingsHubPage* m_settingsPage = nullptr;
-    QStackedWidget* m_contentStack = nullptr;
+    AnimatedStackedWidget* m_contentStack = nullptr;
+    WorkspaceSideMenu* m_secondaryMenu = nullptr;
+    QString m_activeWorkspaceSection;
+    QString m_activeSettingsPageId = QStringLiteral("overview");
+    QString m_previousWorkspaceSection;
+    QString m_globalSettingsReturnSection;
+    bool m_accountSettingsPageOpen = false;
     QMenu* m_instanceMenu = nullptr;
     QMenu* m_globalMenu = nullptr;
     KonamiCode* secretEventFilter = nullptr;

@@ -89,6 +89,7 @@ void NetRequest::executeTask()
     }
 
     QNetworkRequest request(m_url);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
     m_state = m_sink->init(request);
     switch (m_state) {
         case State::Succeeded:

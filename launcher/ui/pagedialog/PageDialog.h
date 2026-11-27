@@ -26,6 +26,7 @@ class PageDialog : public QDialog {
     virtual ~PageDialog() {}
 
     void selectPage(const QString& pageId);
+    void setNavigationVisible(bool visible);
 
    signals:
     void applied();

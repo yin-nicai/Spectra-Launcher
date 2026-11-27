@@ -68,7 +68,7 @@ class Config {
     /// The version channel.
     QString VERSION_CHANNEL;
 
-    /// Product-facing version, for example 0.75.
+    /// Product-facing version, for example 1.0.
     QString VERSION_DISPLAY;
 
     bool JAVA_DOWNLOADER_ENABLED = false;

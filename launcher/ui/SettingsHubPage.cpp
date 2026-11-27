@@ -79,8 +79,6 @@ SettingsHubPage::SettingsHubPage(QWidget* parent) : QWidget(parent)
             QStringLiteral("launcher-settings"));
     addCard(common, 1, 0, tr("Minecraft"), tr("Window, quick play, and game compatibility settings."), QStringLiteral("minecraft"),
             QStringLiteral("minecraft-settings"));
-    addCard(common, 1, 1, tr("Appearance"), tr("Theme, language, and interface display."), QStringLiteral("preferences-desktop-theme"),
-            QStringLiteral("appearance-settings"));
     layout->addLayout(common);
 
     auto networkTitle = makeSectionTitle(content);

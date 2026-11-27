@@ -174,24 +174,59 @@ QList<DownloadCandidate> MojangDownloadSource::candidates(const DownloadRequest&
     if (!DownloadPolicy::isOfficialUrl(officialUrl)) {
         return {};
     }
-    return { { officialUrl, 0, id() } };
+    return { { officialUrl, 100, id() } };
 }
 
 PriorityDownloadSource::PriorityDownloadSource(QVariantMap options)
 {
     m_foreignMirrors = options.value(QStringLiteral("foreignMirrors")).toStringList();
     m_domesticMirrors = options.value(QStringLiteral("domesticMirrors")).toStringList();
+    m_preferDomestic = options.value(QStringLiteral("preferDomestic"), true).toBool();
 }
 
 QList<DownloadCandidate> PriorityDownloadSource::candidates(const DownloadRequest& request) const
 {
     QList<DownloadCandidate> result;
+    auto addDomesticCandidates = [this, &request, &result](int firstPriority) {
+        if (m_domesticMirrors.isEmpty()) {
+            return;
+        }
+        const auto offset = m_requestCounter.fetch_add(1, std::memory_order_relaxed) % static_cast<quint32>(m_domesticMirrors.size());
+        for (int i = 0; i < m_domesticMirrors.size(); ++i) {
+            const auto index = (i + static_cast<int>(offset)) % m_domesticMirrors.size();
+            const auto url = mirrorUrl(m_domesticMirrors.at(index), request);
+            if (url.isValid()) {
+                result.append({ url, firstPriority + i, id() });
+            }
+        }
+    };
+
     const auto officialUrl = defaultOfficialDownloadUrl(request);
+    const auto resourceOverride = APPLICATION->settings()->get(QStringLiteral("ResourceURLOverride")).toString().trimmed();
+
+    if (m_preferDomestic && !m_domesticMirrors.isEmpty()) {
+        addDomesticCandidates(0);
+        if (DownloadPolicy::isOfficialUrl(officialUrl)) {
+            result.append({ officialUrl, 100, id() });
+        }
+        if (!resourceOverride.isEmpty()) {
+            const auto url = mirrorUrl(resourceOverride, request);
+            if (url.isValid()) {
+                result.append({ url, 150, id() });
+            }
+        }
+        for (int i = 0; i < m_foreignMirrors.size(); ++i) {
+            const auto url = mirrorUrl(m_foreignMirrors.at(i), request);
+            if (url.isValid()) {
+                result.append({ url, 200 + i, id() });
+            }
+        }
+        return result;
+    }
+
     if (DownloadPolicy::isOfficialUrl(officialUrl)) {
         result.append({ officialUrl, 0, id() });
     }
-
-    const auto resourceOverride = APPLICATION->settings()->get(QStringLiteral("ResourceURLOverride")).toString().trimmed();
     if (!resourceOverride.isEmpty()) {
         const auto url = mirrorUrl(resourceOverride, request);
         if (url.isValid()) {
@@ -205,12 +240,7 @@ QList<DownloadCandidate> PriorityDownloadSource::candidates(const DownloadReques
             result.append({ url, 100 + i, id() });
         }
     }
-    for (int i = 0; i < m_domesticMirrors.size(); ++i) {
-        const auto url = mirrorUrl(m_domesticMirrors.at(i), request);
-        if (url.isValid()) {
-            result.append({ url, 200 + i, id() });
-        }
-    }
+    addDomesticCandidates(200);
     return result;
 }
 

@@ -2,11 +2,11 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./program_info/org.spectra.Spectra.logo-darkmode.svg">
     <source media="(prefers-color-scheme: light)" srcset="./program_info/org.spectra.Spectra.logo.svg">
-    <img alt="光谱 0.75（Spectra 0.75）" src="./program_info/org.spectra.Spectra.logo.svg" width="38%">
+    <img alt="光谱 1.0（Spectra 1.0）" src="./program_info/org.spectra.Spectra.logo.svg" width="38%">
   </picture>
 </p>
 
-<h1 align="center">光谱 0.75（Spectra 0.75）</h1>
+<h1 align="center">光谱 1.0（Spectra 1.0）</h1>
 
 <p align="center">
   面向 Minecraft 的可扩展、去中心化启动器<br>
@@ -53,10 +53,12 @@
 ### 现代化工作区
 
 - 首页集中显示当前实例、启动状态、账户和常用操作。
+- 启动时在实例栏显示 PCL 风格总进度条，并汇总当前启动步骤、下载和校验进度。
 - 一级导航提供首页、实例、下载、账户和设置入口。
+- 一级页面采用横向滑动叠化切换，左侧二级菜单随当前页面更新；设置、下载和实例编辑均在右侧内容区完成，不切换到独立分界面。
 - 常见操作包括启动游戏、选择实例、内存设置、打开游戏目录和下载源状态。
-- 原生 System/Windows 11 主题保留系统控件绘制；深色与浅色自定义主题使用统一的工作区样式。
-- 所有主题切换均沿用现有 Qt 调色板机制。
+- 界面固定使用深色圆角 Windows 11 主题，不再提供外观或主题切换设置。
+- 图标资源只保留默认图标集，旧图标设置会自动迁移为“默认”。
 
 ### 插件与源
 
@@ -70,7 +72,7 @@
 
 ### 下载与目录策略
 
-- Minecraft 文件支持“官方 → 用户配置的国外镜像 → 用户配置的国内镜像”回退顺序。
+- Minecraft 文件默认按“官方 → 用户配置的国外镜像 → 用户配置的国内镜像”回退；启用国内优先模式后，多个国内镜像会轮转分摊并发连接，并可独立提高 Minecraft 文件并行数。
 - 下载前执行域名白名单检查；未配置的主机不会用于 Minecraft 文件下载。
 - Modrinth、CurseForge 等模组与整合包下载保持原有提供方逻辑，不进入 Minecraft 本体镜像链。
 - 修改资源或日志根路径时，已有实例和文件保持原位。
@@ -88,13 +90,13 @@
 
 | 平台 | 安装包 | 便携版 |
 | --- | --- | --- |
-| Windows x86_64 | `Spectra-0.75-Windows-x86_64-Setup.exe` | `Spectra-0.75-Windows-x86_64-Portable.zip` |
-| Linux x86_64 | `Spectra-0.75-Linux-x86_64.deb` | `Spectra-0.75-Linux-x86_64.tar.gz` |
+| Windows x86_64 | `Spectra-1.0-Windows-x86_64-Setup.exe` | `Spectra-1.0-Windows-x86_64-Portable.zip` |
+| Linux x86_64 | `Spectra-1.0-Linux-x86_64.deb` | `Spectra-1.0-Linux-x86_64.tar.gz` |
 
 每个 Release 同时提供 `SHA256SUMS.txt`。下载后建议校验文件完整性：
 
 ```powershell
-Get-FileHash .\Spectra-0.75-Windows-x86_64-Setup.exe -Algorithm SHA256
+Get-FileHash .\Spectra-1.0-Windows-x86_64-Setup.exe -Algorithm SHA256
 ```
 
 ```bash
@@ -108,14 +110,23 @@ macOS 构建与安装包需要在 macOS、Xcode 和对应 Qt 环境中生成，�
 ## 快速开始
 
 1. 下载并安装与你的系统对应的发布包，或解压便携版。
-2. 首次启动时按照向导选择语言、Java 和主题。
+2. 首次启动时按照向导选择语言和 Java。
 3. 在“账户”页面添加 Microsoft 账户或创建离线账户。
 4. 新建实例，选择 Minecraft 版本和需要的模组加载器。
 5. 选择实例后点击“启动游戏”。
 
 ### 便携模式
 
-Windows ZIP 和 Linux tar.gz 为便携构建。便携版会将用户数据保存在应用目录下，适合独立测试或放到可移动存储设备中使用。
+Windows ZIP 和 Linux tar.gz 为便携构建。解压后根目录只保留主程序和文件夹：
+
+```text
+Spectra\
+├─ spectra.exe  或 Spectra
+├─ .Spectra\    启动器数据、日志、账户和运行库
+└─ .Minecraft\  实例、资源、库和模组
+```
+
+便携版适合独立测试或放到可移动存储设备中使用。
 
 ### 数据兼容
 

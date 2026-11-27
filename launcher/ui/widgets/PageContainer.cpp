@@ -40,11 +40,13 @@
 #include "PageContainer_p.h"
 
 #include <QDialogButtonBox>
+#include <QGraphicsOpacityEffect>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListView>
 #include <QPushButton>
+#include <QPropertyAnimation>
 #include <QSortFilterProxyModel>
 #include <QStackedLayout>
 #include <QStyledItemDelegate>
@@ -230,7 +232,30 @@ void PageContainer::showPage(int row)
         m_currentPage = nullptr;
     }
     if (m_currentPage) {
+        if (m_pageAnimation) {
+            m_pageAnimation->stop();
+        }
+        if (m_pageEffect) {
+            if (auto* effectedPage = qobject_cast<QWidget*>(m_pageEffect->parent())) {
+                effectedPage->setGraphicsEffect(nullptr);
+            }
+        }
         m_pageStack->setCurrentIndex(m_currentPage->stackIndex);
+        auto* page = m_pageStack->currentWidget();
+        m_pageEffect = new QGraphicsOpacityEffect(page);
+        m_pageEffect->setOpacity(0.45);
+        page->setGraphicsEffect(m_pageEffect);
+        m_pageAnimation = new QPropertyAnimation(m_pageEffect, "opacity", this);
+        m_pageAnimation->setDuration(160);
+        m_pageAnimation->setStartValue(0.45);
+        m_pageAnimation->setEndValue(1.0);
+        m_pageAnimation->setEasingCurve(QEasingCurve::OutCubic);
+        connect(m_pageAnimation, &QPropertyAnimation::finished, page, [this, page] {
+            page->setGraphicsEffect(nullptr);
+            m_pageEffect = nullptr;
+            m_pageAnimation = nullptr;
+        });
+        m_pageAnimation->start(QAbstractAnimation::DeleteWhenStopped);
         m_header->setText(m_currentPage->displayName());
         m_currentPage->opened();
     } else {

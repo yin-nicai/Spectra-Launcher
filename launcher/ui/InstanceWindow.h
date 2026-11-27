@@ -59,8 +59,11 @@ class InstanceWindow : public QMainWindow, public BasePageContainer {
     bool selectPage(QString pageId) override;
     BasePage* selectedPage() const override;
     void refreshContainer() override;
+    void setNavigationVisible(bool visible);
+    QList<QPair<QString, QString>> navigationEntries() const;
 
     QString instanceId();
+    QString selectedPageId() const;
 
     // save all settings and changes (prepare for launch)
     bool saveAll();

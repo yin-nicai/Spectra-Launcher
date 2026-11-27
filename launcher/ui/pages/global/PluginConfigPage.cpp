@@ -6,6 +6,7 @@
 
 #include "PluginConfigPage.h"
 
+#include <QCheckBox>
 #include <QFormLayout>
 #include <QFrame>
 #include <QGroupBox>
@@ -17,6 +18,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSpinBox>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 
@@ -48,7 +50,8 @@ PluginConfigPage::PluginConfigPage(QWidget* parent) : QWidget(parent)
         tr("Provides version lists, dependencies, file hashes, and download descriptions. The default Spectra source remains available."),
         QStringLiteral("metadataSources"));
     addGroup(content, m_downloadSources, tr("Minecraft download sources"),
-             tr("Controls Minecraft clients, libraries, assets, and asset indexes. Modrinth and CurseForge downloads are not affected."),
+             tr("Controls Minecraft clients, libraries, assets, and asset indexes. Configured domestic mirrors can be prioritized and "
+                "distributed across parallel downloads. Modrinth and CurseForge downloads are not affected."),
              QStringLiteral("downloadSources"));
     addGroup(content, m_directoryStrategies, tr("Directory strategies"),
              tr("Resolves instance, game, asset, log, and crash-report paths. A damaged configuration falls back to Spectra directories."),
@@ -73,9 +76,17 @@ PluginConfigPage::PluginConfigPage(QWidget* parent) : QWidget(parent)
     m_domesticMirrors = new QPlainTextEdit(advancedContent);
     m_domesticMirrors->setPlaceholderText(tr("One URL or template per line, for example https://mirror.example/{path}"));
     m_domesticMirrors->setMaximumHeight(90);
+    m_preferDomestic = new QCheckBox(tr("国内镜像优先"), advancedContent);
+    m_preferDomestic->setToolTip(tr("已配置国内镜像时，Minecraft 文件会优先从国内镜像下载，并在多个镜像之间轮转分摊连接。"));
+    m_domesticConcurrency = new QSpinBox(advancedContent);
+    m_domesticConcurrency->setRange(2, 32);
+    m_domesticConcurrency->setValue(12);
+    m_domesticConcurrency->setToolTip(tr("启用国内镜像优先时，Minecraft 文件下载任务至少使用此并发数；不会影响模组和整合包下载。"));
     advancedLayout->addRow(tr("Additional metadata URLs"), m_metadataUrls);
     advancedLayout->addRow(tr("Foreign mirror URLs"), m_foreignMirrors);
     advancedLayout->addRow(tr("Domestic mirror URLs"), m_domesticMirrors);
+    advancedLayout->addRow(QString(), m_preferDomestic);
+    advancedLayout->addRow(tr("国内镜像并发数"), m_domesticConcurrency);
     advancedBox->setChecked(false);
     advancedContent->setVisible(false);
     connect(advancedBox, &QGroupBox::toggled, advancedContent, &QWidget::setVisible);
@@ -95,6 +106,10 @@ PluginConfigPage::PluginConfigPage(QWidget* parent) : QWidget(parent)
     const auto mirrorOptions = m_downloadSources.options.value(QStringLiteral("priority-mirrors"));
     m_foreignMirrors->setPlainText(mirrorOptions.value(QStringLiteral("foreignMirrors")).toStringList().join(QLatin1Char('\n')));
     m_domesticMirrors->setPlainText(mirrorOptions.value(QStringLiteral("domesticMirrors")).toStringList().join(QLatin1Char('\n')));
+    m_preferDomestic->setChecked(mirrorOptions.value(QStringLiteral("preferDomestic"), true).toBool());
+    m_domesticConcurrency->setValue(qBound(2, mirrorOptions.value(QStringLiteral("domesticConcurrency"), 12).toInt(), 32));
+    m_domesticConcurrency->setEnabled(m_preferDomestic->isChecked());
+    connect(m_preferDomestic, &QCheckBox::toggled, m_domesticConcurrency, &QWidget::setEnabled);
 }
 
 void PluginConfigPage::addGroup(QWidget* parent, Group& group, const QString& title, const QString& description, const QString& jsonKey)
@@ -202,6 +217,8 @@ QJsonArray PluginConfigPage::groupJson(Group& group)
         } else if (id == QStringLiteral("priority-mirrors")) {
             options.insert(QStringLiteral("foreignMirrors"), lines(m_foreignMirrors));
             options.insert(QStringLiteral("domesticMirrors"), lines(m_domesticMirrors));
+            options.insert(QStringLiteral("preferDomestic"), m_preferDomestic->isChecked());
+            options.insert(QStringLiteral("domesticConcurrency"), m_domesticConcurrency->value());
         }
         result.append(QJsonObject{
             { QStringLiteral("id"), id },

@@ -13,8 +13,10 @@
 #include "ui/pages/BasePage.h"
 
 class QLabel;
+class QCheckBox;
 class QPlainTextEdit;
 class QPushButton;
+class QSpinBox;
 class QTreeWidget;
 
 namespace Plugins {
@@ -58,4 +60,6 @@ class PluginConfigPage final : public QWidget, public BasePage {
     QPlainTextEdit* m_metadataUrls = nullptr;
     QPlainTextEdit* m_foreignMirrors = nullptr;
     QPlainTextEdit* m_domesticMirrors = nullptr;
+    QCheckBox* m_preferDomestic = nullptr;
+    QSpinBox* m_domesticConcurrency = nullptr;
 };

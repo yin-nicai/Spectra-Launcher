@@ -15,6 +15,7 @@
 #include <QStringList>
 #include <QUrl>
 #include <QVariantMap>
+#include <atomic>
 
 #include "plugin/PluginInterfaces.h"
 
@@ -53,6 +54,8 @@ class PriorityDownloadSource final : public IDownloadSource {
    private:
     QStringList m_foreignMirrors;
     QStringList m_domesticMirrors;
+    bool m_preferDomestic = true;
+    mutable std::atomic<quint32> m_requestCounter{0};
 };
 
 }  // namespace Plugins

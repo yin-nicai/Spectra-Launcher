@@ -59,6 +59,7 @@
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QImageReader>
 #include <QInputDialog>
 #include <QKeyEvent>
 #include <QLabel>
@@ -66,11 +67,12 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPaintEvent>
+#include <QPainter>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QShortcut>
 #include <QShowEvent>
-#include <QStackedWidget>
 #include <QStatusBar>
 #include <QToolBar>
 #include <QToolButton>
@@ -96,13 +98,14 @@
 #include <plugin/PluginSystem.h>
 #include <tools/BaseProfiler.h>
 #include "AccountsPage.h"
+#include "AnimatedStackedWidget.h"
 #include "DownloadsPage.h"
 #include "HomeDashboard.h"
 #include "InstanceWindow.h"
 #include "InstancesPage.h"
-#include "NavigationSidebar.h"
 #include "SettingsHubPage.h"
 #include "WorkspaceHeader.h"
+#include "WorkspaceSideMenu.h"
 #include "WorkspaceStyle.h"
 
 #include "settings/SettingsObject.h"
@@ -158,6 +161,45 @@ class SettingsSaveLock final : public QObject {
     SettingsObject::Lock m_lock;
 };
 
+class WallpaperRoot final : public QWidget {
+   public:
+    explicit WallpaperRoot(QWidget* parent = nullptr) : QWidget(parent)
+    {
+        setObjectName(QStringLiteral("workspaceRoot"));
+        setAttribute(Qt::WA_StyledBackground);
+        setAttribute(Qt::WA_OpaquePaintEvent);
+        setAutoFillBackground(false);
+        QImageReader reader(QStringLiteral(":/org.spectra.Spectra.wallpaper.png"));
+        const auto image = reader.read();
+        m_wallpaper = QPixmap::fromImage(image);
+        if (m_wallpaper.isNull()) {
+            qWarning() << "Unable to load Spectra wallpaper:" << reader.errorString();
+        }
+    }
+
+   protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform);
+        painter.fillRect(rect(), QColor(10, 13, 18));
+        if (!m_wallpaper.isNull()) {
+            const auto scaled = m_wallpaper.size().scaled(size(), Qt::KeepAspectRatioByExpanding);
+            const QPixmap cover = m_wallpaper.scaled(scaled, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+            const QPoint origin((width() - cover.width()) / 2, (height() - cover.height()) / 2);
+            painter.drawPixmap(origin, cover);
+        }
+        QLinearGradient shade(0, 0, 0, height());
+        shade.setColorAt(0.0, QColor(8, 10, 14, 178));
+        shade.setColorAt(0.42, QColor(8, 10, 14, 72));
+        shade.setColorAt(1.0, QColor(8, 10, 14, 205));
+        painter.fillRect(event->rect(), shade);
+    }
+
+   private:
+    QPixmap m_wallpaper;
+};
+
 QString profileInUseFilter(const QString& profile, bool used)
 {
     if (used) {
@@ -170,14 +212,24 @@ QString profileInUseFilter(const QString& profile, bool used)
 
 void MainWindow::showGlobalSettingsPage(const QString& pageId)
 {
+    if (m_globalSettingsReturnSection.isEmpty()) {
+        m_globalSettingsReturnSection =
+            m_activeWorkspaceSection.isEmpty() ? QStringLiteral("settings") : m_activeWorkspaceSection;
+    }
+    m_accountSettingsPageOpen = pageId == QStringLiteral("accounts");
+    m_activeWorkspaceSection =
+        m_accountSettingsPageOpen ? QStringLiteral("accounts") : m_globalSettingsReturnSection;
+    m_activeSettingsPageId = pageId.isEmpty() ? QStringLiteral("overview") : pageId;
     if (m_globalSettingsPage) {
         m_globalSettingsPage->selectPage(pageId);
-        m_navigation->setCurrentItem(NavigationSidebar::Item::Settings);
+        m_header->setCurrentPage(m_accountSettingsPageOpen ? WorkspaceHeader::Page::Accounts : WorkspaceHeader::Page::Settings);
+        updateSecondaryMenu();
         m_contentStack->setCurrentWidget(m_globalSettingsPage);
         return;
     }
 
     auto* dialog = new PageDialog(APPLICATION->globalSettingsProvider(), pageId, m_contentStack, true);
+    dialog->setNavigationVisible(false);
     m_globalSettingsPage = dialog;
     new SettingsSaveLock(APPLICATION->settings(), dialog);
     connect(dialog, &PageDialog::applied, APPLICATION, &Application::globalSettingsApplied);
@@ -187,11 +239,33 @@ void MainWindow::showGlobalSettingsPage(const QString& pageId)
         }
         dialog->deleteLater();
         m_globalSettingsPage = nullptr;
-        m_navigation->setCurrentItem(NavigationSidebar::Item::Settings);
-        m_contentStack->setCurrentWidget(m_settingsPage);
+        m_accountSettingsPageOpen = false;
+        m_activeSettingsPageId = QStringLiteral("overview");
+        const auto returnSection = m_globalSettingsReturnSection;
+        m_globalSettingsReturnSection.clear();
+        m_activeWorkspaceSection = returnSection.isEmpty() ? QStringLiteral("settings") : returnSection;
+        QWidget* returnPage = m_settingsPage;
+        auto headerPage = WorkspaceHeader::Page::Settings;
+        if (m_activeWorkspaceSection == QStringLiteral("accounts")) {
+            returnPage = m_accountsPage;
+            headerPage = WorkspaceHeader::Page::Accounts;
+        } else if (m_activeWorkspaceSection == QStringLiteral("downloads")) {
+            returnPage = m_downloadsPage;
+            headerPage = WorkspaceHeader::Page::Downloads;
+        } else if (m_activeWorkspaceSection == QStringLiteral("instances")) {
+            returnPage = m_instancesPage;
+            headerPage = WorkspaceHeader::Page::Instances;
+        } else if (m_activeWorkspaceSection == QStringLiteral("home")) {
+            returnPage = m_dashboard;
+            headerPage = WorkspaceHeader::Page::Home;
+        }
+        m_header->setCurrentPage(headerPage);
+        m_contentStack->setCurrentWidget(returnPage);
+        updateSecondaryMenu();
     });
     m_contentStack->addWidget(dialog);
-    m_navigation->setCurrentItem(NavigationSidebar::Item::Settings);
+    m_header->setCurrentPage(m_accountSettingsPageOpen ? WorkspaceHeader::Page::Accounts : WorkspaceHeader::Page::Settings);
+    updateSecondaryMenu();
     m_contentStack->setCurrentWidget(dialog);
     dialog->show();
 }
@@ -206,7 +280,10 @@ InstanceWindow* MainWindow::showInstanceView(BaseInstance* instance, const QStri
         if (!pageId.isEmpty()) {
             m_instancePage->selectPage(pageId);
         }
-        m_navigation->setCurrentItem(NavigationSidebar::Item::Instances);
+        m_instancePage->setNavigationVisible(false);
+        m_activeWorkspaceSection = QStringLiteral("instances");
+        m_header->setCurrentPage(WorkspaceHeader::Page::Instances);
+        updateSecondaryMenu();
         m_contentStack->setCurrentWidget(m_instancePage);
         return m_instancePage;
     }
@@ -216,6 +293,7 @@ InstanceWindow* MainWindow::showInstanceView(BaseInstance* instance, const QStri
     }
 
     auto* instancePage = new InstanceWindow(instance, m_contentStack, true);
+    instancePage->setNavigationVisible(false);
     m_instancePage = instancePage;
     const auto returnPage = m_contentStack->currentWidget();
     connect(instancePage, &InstanceWindow::closeRequested, this, [this, instancePage, returnPage] {
@@ -227,15 +305,18 @@ InstanceWindow* MainWindow::showInstanceView(BaseInstance* instance, const QStri
         if (returnPage && m_contentStack->indexOf(returnPage) >= 0) {
             m_contentStack->setCurrentWidget(returnPage);
         } else {
-            m_navigation->setCurrentItem(NavigationSidebar::Item::Instances);
+            m_header->setCurrentPage(WorkspaceHeader::Page::Instances);
             m_contentStack->setCurrentWidget(m_instancesPage);
         }
+        updateSecondaryMenu();
     });
     m_contentStack->addWidget(instancePage);
     if (!pageId.isEmpty()) {
         instancePage->selectPage(pageId);
     }
-    m_navigation->setCurrentItem(NavigationSidebar::Item::Instances);
+    m_header->setCurrentPage(WorkspaceHeader::Page::Instances);
+    m_activeWorkspaceSection = QStringLiteral("instances");
+    updateSecondaryMenu();
     m_contentStack->setCurrentWidget(instancePage);
     instancePage->show();
     return instancePage;
@@ -255,6 +336,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->instanceToolBar->hide();
     ui->newsToolBar->hide();
     ui->menuBar->hide();
+    statusBar()->hide();
     m_header = new WorkspaceHeader(this);
     connect(m_header, &WorkspaceHeader::instanceSelected, this, &MainWindow::setSelectedInstanceById);
     connect(m_header, &WorkspaceHeader::newsRequested, this, &MainWindow::newsButtonClicked);
@@ -427,8 +509,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Create the instance list widget
     {
-        m_navigation = new NavigationSidebar(ui->centralWidget);
-        m_contentStack = new QStackedWidget(ui->centralWidget);
+        m_contentStack = new AnimatedStackedWidget(ui->centralWidget);
+        m_contentStack->setObjectName(QStringLiteral("workspacePages"));
+        m_contentStack->setAttribute(Qt::WA_TranslucentBackground);
+        m_contentStack->setAutoFillBackground(false);
         m_dashboard = new HomeDashboard(m_contentStack);
         m_downloadsPage = new DownloadsPage(m_contentStack);
         m_accountsPage = new AccountsPage(m_contentStack);
@@ -438,6 +522,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
         m_contentStack->addWidget(m_downloadsPage);
         m_contentStack->addWidget(m_accountsPage);
         m_contentStack->addWidget(m_settingsPage);
+        for (auto* page : { static_cast<QWidget*>(m_dashboard), static_cast<QWidget*>(m_downloadsPage),
+                            static_cast<QWidget*>(m_accountsPage), static_cast<QWidget*>(m_settingsPage) }) {
+            page->setAttribute(Qt::WA_TranslucentBackground);
+            page->setAutoFillBackground(false);
+        }
 
         view->setSelectionMode(QAbstractItemView::SingleSelection);
         // FIXME: leaks ListViewDelegate
@@ -475,21 +564,27 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
         view->setModel(proxymodel);
         m_instancesPage = new InstancesPage(view, m_contentStack);
+        m_instancesPage->setAttribute(Qt::WA_TranslucentBackground);
+        m_instancesPage->setAutoFillBackground(false);
         m_contentStack->insertWidget(1, m_instancesPage);
 
         buildWorkspaceMenus();
-        m_header->setMoreMenu(m_globalMenu);
-        m_header->setAccountMenu(ui->accountsMenu);
         m_header->setLaunchAction(ui->actionLaunchInstance);
 
-        m_workspace = new QWidget(ui->centralWidget);
-        m_workspace->setObjectName(QStringLiteral("workspaceRoot"));
+        m_workspace = new WallpaperRoot(ui->centralWidget);
         auto workspaceLayout = new QVBoxLayout(m_workspace);
         workspaceLayout->setContentsMargins(0, 0, 0, 0);
         workspaceLayout->setSpacing(0);
         workspaceLayout->addWidget(m_header);
-        workspaceLayout->addWidget(m_contentStack, 1);
-        ui->horizontalLayout->addWidget(m_navigation);
+        auto contentShell = new QWidget(m_workspace);
+        contentShell->setObjectName(QStringLiteral("workspaceContentShell"));
+        auto contentLayout = new QHBoxLayout(contentShell);
+        contentLayout->setContentsMargins(0, 0, 0, 0);
+        contentLayout->setSpacing(0);
+        m_secondaryMenu = new WorkspaceSideMenu(contentShell);
+        contentLayout->addWidget(m_secondaryMenu);
+        contentLayout->addWidget(m_contentStack, 1);
+        workspaceLayout->addWidget(contentShell, 1);
         ui->horizontalLayout->addWidget(m_workspace, 1);
         updateWorkspaceTheme();
         view->setSourceOfGroupCollapseStatus(
@@ -500,37 +595,39 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
         m_instancesPage->setActions(ui->actionAddInstance, ui->actionLaunchInstance, ui->actionEditInstance, m_openGameDirAction,
                                     m_instanceMenu, nullptr);
 
-        connect(m_navigation, &NavigationSidebar::itemSelected, this, [this](NavigationSidebar::Item item) {
-            switch (item) {
-                case NavigationSidebar::Item::Home:
-                    m_contentStack->setCurrentWidget(m_dashboard);
+        connect(m_secondaryMenu, &WorkspaceSideMenu::itemActivated, this, &MainWindow::handleSecondaryMenuAction);
+        connect(m_header, &WorkspaceHeader::accountsRequested, this, [this] { showWorkspaceSection(QStringLiteral("accounts")); });
+        connect(m_header, &WorkspaceHeader::pageSelected, this, [this](WorkspaceHeader::Page page) {
+            switch (page) {
+                case WorkspaceHeader::Page::Home:
+                    showWorkspaceSection(QStringLiteral("home"));
                     break;
-                case NavigationSidebar::Item::Instances:
-                    m_contentStack->setCurrentWidget(m_instancesPage);
+                case WorkspaceHeader::Page::Instances:
+                    showWorkspaceSection(QStringLiteral("instances"));
                     view->setFocus();
                     break;
-                case NavigationSidebar::Item::Downloads:
-                    m_contentStack->setCurrentWidget(m_downloadsPage);
+                case WorkspaceHeader::Page::Downloads:
+                    showWorkspaceSection(QStringLiteral("downloads"));
                     break;
-                case NavigationSidebar::Item::Accounts:
-                    m_contentStack->setCurrentWidget(m_accountsPage);
+                case WorkspaceHeader::Page::Accounts:
+                    showWorkspaceSection(QStringLiteral("accounts"));
                     break;
-                case NavigationSidebar::Item::Settings:
-                    m_contentStack->setCurrentWidget(m_settingsPage);
+                case WorkspaceHeader::Page::Settings:
+                    showWorkspaceSection(QStringLiteral("settings"));
                     break;
             }
         });
         connect(m_dashboard, &HomeDashboard::downloadsRequested, this, [this] {
-            m_navigation->setCurrentItem(NavigationSidebar::Item::Downloads);
-            m_contentStack->setCurrentWidget(m_downloadsPage);
+            m_header->setCurrentPage(WorkspaceHeader::Page::Downloads);
+            showWorkspaceSection(QStringLiteral("downloads"));
         });
         connect(m_dashboard, &HomeDashboard::accountsRequested, this, [this] {
-            m_navigation->setCurrentItem(NavigationSidebar::Item::Accounts);
-            m_contentStack->setCurrentWidget(m_accountsPage);
+            m_header->setCurrentPage(WorkspaceHeader::Page::Accounts);
+            showWorkspaceSection(QStringLiteral("accounts"));
         });
         connect(m_dashboard, &HomeDashboard::settingsRequested, this, [this] {
-            m_navigation->setCurrentItem(NavigationSidebar::Item::Settings);
-            m_contentStack->setCurrentWidget(m_settingsPage);
+            m_header->setCurrentPage(WorkspaceHeader::Page::Settings);
+            showWorkspaceSection(QStringLiteral("settings"));
         });
         connect(m_downloadsPage, &DownloadsPage::providerSelected, this, [this](const QString& pageId) { addInstance({}, {}, pageId); });
         connect(m_downloadsPage, &DownloadsPage::configureSourcesRequested, this,
@@ -540,6 +637,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
         connect(APPLICATION->instances(), &InstanceList::instancesChanged, this, &MainWindow::refreshInstanceSelector);
         connect(APPLICATION->instances(), &InstanceList::dataIsInvalid, this, &MainWindow::refreshInstanceSelector);
         connect(APPLICATION->instances(), &QAbstractItemModel::dataChanged, this, &MainWindow::refreshInstanceSelector);
+        showWorkspaceSection(QStringLiteral("home"));
     }
     // The cat background
     {
@@ -674,6 +772,198 @@ void MainWindow::buildWorkspaceMenus()
     m_globalMenu->addAction(ui->actionCloseWindow);
 }
 
+void MainWindow::showWorkspaceSection(const QString& section)
+{
+    if (m_instancePage && !m_instancePage->requestClose()) {
+        return;
+    }
+    if (m_globalSettingsPage) {
+        m_globalSettingsPage->reject();
+    }
+    if (m_newInstancePage) {
+        m_newInstancePage->reject();
+    }
+
+    m_activeWorkspaceSection = section;
+    QWidget* target = nullptr;
+    if (section == QStringLiteral("home")) {
+        m_header->setCurrentPage(WorkspaceHeader::Page::Home);
+        target = m_dashboard;
+    } else if (section == QStringLiteral("instances")) {
+        m_header->setCurrentPage(WorkspaceHeader::Page::Instances);
+        target = m_instancesPage;
+    } else if (section == QStringLiteral("downloads")) {
+        m_header->setCurrentPage(WorkspaceHeader::Page::Downloads);
+        target = m_downloadsPage;
+    } else if (section == QStringLiteral("accounts")) {
+        m_header->setCurrentPage(WorkspaceHeader::Page::Accounts);
+        target = m_accountsPage;
+    } else if (section == QStringLiteral("settings")) {
+        m_header->setCurrentPage(WorkspaceHeader::Page::Settings);
+        m_activeSettingsPageId = QStringLiteral("overview");
+        target = m_settingsPage;
+    }
+
+    if (target) {
+        updateSecondaryMenu();
+        m_contentStack->setCurrentWidget(target);
+    }
+}
+
+void MainWindow::updateSecondaryMenu()
+{
+    if (!m_secondaryMenu) {
+        return;
+    }
+
+    QList<WorkspaceMenuItem> items;
+    QString title;
+    QString selectedId;
+    const auto icon = [](const QString& name, QStyle::StandardPixmap fallback) { return WorkspaceStyle::icon(name, fallback); };
+
+    if (m_activeWorkspaceSection == QStringLiteral("home")) {
+        title = tr("主页导航");
+        selectedId = QStringLiteral("home:overview");
+        items = {
+            { selectedId, tr("概览"), tr("返回首页概览。"), icon(QStringLiteral("home"), QStyle::SP_DesktopIcon), true },
+            { QStringLiteral("action:add-instance"), tr("新建实例"), tr("创建新的 Minecraft 实例。"),
+              icon(QStringLiteral("new"), QStyle::SP_FileIcon), true },
+            { QStringLiteral("nav:downloads"), tr("下载"), tr("打开下载中心。"), icon(QStringLiteral("download"), QStyle::SP_ArrowDown),
+              true },
+            { QStringLiteral("nav:accounts"), tr("账户"), tr("查看当前账户。"), icon(QStringLiteral("accounts"), QStyle::SP_FileDialogDetailedView),
+              true },
+            { QStringLiteral("nav:settings"), tr("设置"), tr("打开启动器设置。"), icon(QStringLiteral("settings"), QStyle::SP_FileDialogDetailedView),
+              true },
+        };
+    } else if (m_activeWorkspaceSection == QStringLiteral("instances")) {
+        title = tr("实例导航");
+        if (m_instancePage) {
+            title = tr("实例管理");
+            selectedId = QStringLiteral("instance-page:") + m_instancePage->selectedPageId();
+            items.append({ QStringLiteral("instances:overview"), tr("返回实例列表"), tr("保存当前页面并返回实例列表。"),
+                           icon(QStringLiteral("back"), QStyle::SP_ArrowBack), true });
+            for (const auto& entry : m_instancePage->navigationEntries()) {
+                items.append({ QStringLiteral("instance-page:") + entry.first, entry.second, entry.second,
+                               icon(QStringLiteral("instances"), QStyle::SP_FileDialogListView), true });
+            }
+        } else {
+            selectedId = QStringLiteral("instances:overview");
+            items = {
+                { selectedId, tr("实例列表"), tr("查看全部实例。"), icon(QStringLiteral("instances"), QStyle::SP_FileDialogListView), true },
+                { QStringLiteral("action:add-instance"), tr("新建实例"), tr("创建新的 Minecraft 实例。"),
+                  icon(QStringLiteral("new"), QStyle::SP_FileIcon), true },
+                { QStringLiteral("action:launch-instance"), tr("启动游戏"), tr("启动当前选中的实例。"),
+                  icon(QStringLiteral("launch"), QStyle::SP_MediaPlay), ui->actionLaunchInstance->isEnabled() },
+                { QStringLiteral("action:edit-instance"), tr("编辑实例"), tr("编辑当前实例。"),
+                  icon(QStringLiteral("edit"), QStyle::SP_FileDialogDetailedView), ui->actionEditInstance->isEnabled() },
+                { QStringLiteral("action:open-instance-folder"), tr("打开目录"), tr("打开当前实例的游戏目录。"),
+                  icon(QStringLiteral("folder"), QStyle::SP_DirOpenIcon), m_openGameDirAction->isEnabled() },
+            };
+        }
+    } else if (m_activeWorkspaceSection == QStringLiteral("downloads")) {
+        title = tr("下载导航");
+        selectedId = m_newInstancePage ? QStringLiteral("provider:") + m_newInstancePage->selectedPageId()
+                                       : QStringLiteral("downloads:overview");
+        items.append({ selectedId, tr("下载中心"), tr("浏览可用的下载来源。"), icon(QStringLiteral("download"), QStyle::SP_ArrowDown), true });
+
+        QHash<QString, Plugins::PluginRegistration<Plugins::IResourceProvider>> registrations;
+        for (const auto& registration : APPLICATION->plugins()->resourceProviders().registrations()) {
+            registrations.insert(registration.id, registration);
+        }
+        Plugins::ResourcePageContext context;
+        context.surface = Plugins::ResourceSurface::InstanceSource;
+        for (const auto* provider : APPLICATION->plugins()->resourceProviders().enabledInOrder()) {
+            const auto registration = registrations.value(provider->id());
+            for (const auto& spec : provider->pages(context)) {
+                const auto itemTitle = spec.title.isEmpty() ? registration.displayName : spec.title;
+                items.append({ QStringLiteral("provider:") + spec.id, itemTitle, spec.description,
+                               WorkspaceStyle::icon(spec.iconName, QStyle::SP_FileDialogListView), true });
+            }
+        }
+        items.append({ QStringLiteral("downloads:sources"), tr("下载源配置"), tr("配置元数据源、下载源和镜像优先级。"),
+                       icon(QStringLiteral("settings"), QStyle::SP_FileDialogDetailedView), true });
+    } else if (m_activeWorkspaceSection == QStringLiteral("accounts")) {
+        title = tr("账户导航");
+        selectedId = m_accountSettingsPageOpen ? QStringLiteral("accounts:manage") : QStringLiteral("accounts:overview");
+        items = {
+            { selectedId, tr("账户列表"), tr("查看当前启动器账户。"), icon(QStringLiteral("accounts"), QStyle::SP_FileDialogDetailedView), true },
+            { QStringLiteral("accounts:manage"), tr("账户管理"), tr("添加、切换或管理账户。"),
+              icon(QStringLiteral("settings"), QStyle::SP_FileDialogDetailedView), true },
+        };
+    } else if (m_activeWorkspaceSection == QStringLiteral("settings")) {
+        title = tr("设置导航");
+        selectedId = QStringLiteral("settings:") +
+                     (m_activeSettingsPageId.isEmpty() ? QStringLiteral("overview") : m_activeSettingsPageId);
+        items = {
+            { selectedId, tr("设置概览"), tr("查看全部设置分类。"), icon(QStringLiteral("settings"), QStyle::SP_FileDialogDetailedView), true },
+            { QStringLiteral("settings:java-settings"), tr("Java 与内存"), tr("Java 运行时、内存限制和 JVM 参数。"),
+              icon(QStringLiteral("settings-configure"), QStyle::SP_ComputerIcon), true },
+            { QStringLiteral("settings:launcher-settings"), tr("启动器"), tr("并发、目录和启动器行为。"),
+              icon(QStringLiteral("settings"), QStyle::SP_FileDialogDetailedView), true },
+            { QStringLiteral("settings:minecraft-settings"), tr("Minecraft"), tr("窗口、快捷 play 和游戏兼容性。"),
+              icon(QStringLiteral("minecraft"), QStyle::SP_FileIcon), true },
+            { QStringLiteral("settings:plugins"), tr("插件与源"), tr("元数据、下载和资源平台。"),
+              icon(QStringLiteral("plugins"), QStyle::SP_FileDialogListView), true },
+            { QStringLiteral("settings:directories"), tr("目录"), tr("实例、游戏、资源、日志和崩溃报告目录。"),
+              icon(QStringLiteral("folder"), QStyle::SP_DirOpenIcon), true },
+            { QStringLiteral("settings:apis"), tr("API 与下载"), tr("元数据地址、粘贴服务和下载配置。"),
+              icon(QStringLiteral("download"), QStyle::SP_ArrowDown), true },
+            { QStringLiteral("settings:proxy-settings"), tr("代理"), tr("网络代理配置。"), icon(QStringLiteral("network-workgroup"), QStyle::SP_DriveNetIcon),
+              true },
+            { QStringLiteral("settings:language-settings"), tr("语言"), tr("选择启动器语言。"),
+              icon(QStringLiteral("preferences-desktop-locale"), QStyle::SP_FileDialogInfoView), true },
+            { QStringLiteral("settings:external-tools"), tr("外部工具"), tr("配置外部程序与集成。"),
+              icon(QStringLiteral("applications-system"), QStyle::SP_ComputerIcon), true },
+        };
+    }
+
+    m_secondaryMenu->setMenu(title, items, selectedId);
+    m_secondaryMenu->setVisible(!items.isEmpty());
+}
+
+void MainWindow::handleSecondaryMenuAction(const QString& id)
+{
+    if (id == QStringLiteral("home:overview")) {
+        showWorkspaceSection(QStringLiteral("home"));
+    } else if (id == QStringLiteral("instances:overview")) {
+        if (m_instancePage && !m_instancePage->requestClose()) {
+            return;
+        }
+        showWorkspaceSection(QStringLiteral("instances"));
+    } else if (id == QStringLiteral("downloads:overview")) {
+        showWorkspaceSection(QStringLiteral("downloads"));
+    } else if (id == QStringLiteral("accounts:overview")) {
+        showWorkspaceSection(QStringLiteral("accounts"));
+    } else if (id == QStringLiteral("settings:overview")) {
+        showWorkspaceSection(QStringLiteral("settings"));
+    } else if (id == QStringLiteral("nav:downloads")) {
+        showWorkspaceSection(QStringLiteral("downloads"));
+    } else if (id == QStringLiteral("nav:accounts")) {
+        showWorkspaceSection(QStringLiteral("accounts"));
+    } else if (id == QStringLiteral("nav:settings")) {
+        showWorkspaceSection(QStringLiteral("settings"));
+    } else if (id == QStringLiteral("action:add-instance")) {
+        ui->actionAddInstance->trigger();
+    } else if (id == QStringLiteral("action:launch-instance")) {
+        ui->actionLaunchInstance->trigger();
+    } else if (id == QStringLiteral("action:edit-instance")) {
+        ui->actionEditInstance->trigger();
+    } else if (id == QStringLiteral("action:open-instance-folder")) {
+        m_openGameDirAction->trigger();
+    } else if (id == QStringLiteral("downloads:sources")) {
+        APPLICATION->ShowGlobalSettings(this, QStringLiteral("plugins"));
+    } else if (id == QStringLiteral("accounts:manage")) {
+        APPLICATION->ShowGlobalSettings(this, QStringLiteral("accounts"));
+    } else if (id.startsWith(QStringLiteral("settings:"))) {
+        APPLICATION->ShowGlobalSettings(this, id.sliced(9));
+    } else if (id.startsWith(QStringLiteral("instance-page:")) && m_instancePage) {
+        m_instancePage->selectPage(id.sliced(14));
+        updateSecondaryMenu();
+    } else if (id.startsWith(QStringLiteral("provider:"))) {
+        addInstance({}, {}, id.sliced(9));
+    }
+}
+
 // macOS always has a native menu bar, so these fixes are not applicable
 // Other systems may or may not have a native menu bar (most do not - it seems like only Ubuntu Unity does)
 #ifndef Q_OS_MAC
@@ -701,9 +991,6 @@ void MainWindow::retranslateUi()
     }
     if (m_openGameDirAction) {
         m_openGameDirAction->setText(tr("Open game directory"));
-    }
-    if (m_navigation) {
-        m_navigation->retranslate();
     }
     if (m_header) {
         m_header->retranslate();
@@ -759,7 +1046,8 @@ QMenu* MainWindow::createPopupMenu()
 }
 void MainWindow::setStatusBarVisibility(bool state)
 {
-    statusBar()->setVisible(state);
+    Q_UNUSED(state);
+    statusBar()->hide();
     APPLICATION->settings()->set("StatusBarVisible", state);
 }
 void MainWindow::lockToolbars(bool state)
@@ -772,25 +1060,7 @@ void MainWindow::lockToolbars(bool state)
 
 void MainWindow::konamiTriggered()
 {
-    QString gradient =
-        " stop:0 rgba(125, 0, 0, 255), stop:0.166 rgba(125, 125, 0, 255), stop:0.333 rgba(0, 125, 0, 255), stop:0.5 rgba(0, 125, 125, "
-        "255), stop:0.666 rgba(0, 0, 125, 255), stop:0.833 rgba(125, 0, 125, 255), stop:1 rgba(125, 0, 0, 255));";
-    QString stylesheet = "background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0," + gradient;
-    if (ui->mainToolBar->styleSheet() == stylesheet) {
-        ui->mainToolBar->setStyleSheet("");
-        ui->instanceToolBar->setStyleSheet("");
-        ui->centralWidget->setStyleSheet("");
-        ui->newsToolBar->setStyleSheet("");
-        ui->statusBar->setStyleSheet("");
-        qDebug() << "Super Secret Mode DEACTIVATED!";
-    } else {
-        ui->mainToolBar->setStyleSheet(stylesheet);
-        ui->instanceToolBar->setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1," + gradient);
-        ui->centralWidget->setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1," + gradient);
-        ui->newsToolBar->setStyleSheet(stylesheet);
-        ui->statusBar->setStyleSheet(stylesheet);
-        qDebug() << "Super Secret Mode ACTIVATED!";
-    }
+    qDebug() << "Legacy rainbow workspace mode is disabled in the flat Spectra shell.";
 }
 
 void MainWindow::showInstanceContextMenu(const QPoint& pos)
@@ -888,15 +1158,22 @@ void MainWindow::updateWorkspaceTheme()
         themeId = QApplication::style()->objectName();
     }
 
-    const bool nativeTheme = WorkspaceStyle::isNativeTheme(themeId);
+    auto* selectedTheme = APPLICATION->themeManager()->getApplicationTheme(themeId);
+    const auto applicationStyle = selectedTheme && !selectedTheme->appStyleSheet().isEmpty()
+                                      ? selectedTheme->appStyleSheet()
+                                      : WorkspaceStyle::applicationStyleSheet(themeId);
+    if (qApp->styleSheet() != applicationStyle) {
+        qApp->setStyleSheet(applicationStyle);
+    }
+
     if (m_workspace) {
-        const auto style = WorkspaceStyle::styleSheet(nativeTheme);
+        const auto style = WorkspaceStyle::styleSheetForTheme(themeId);
         if (m_workspace->styleSheet() != style) {
             m_workspace->setStyleSheet(style);
         }
     }
-    if (m_navigation) {
-        m_navigation->applyTheme(nativeTheme);
+    if (m_header) {
+        m_header->retranslate();
     }
 }
 
@@ -1041,9 +1318,6 @@ void MainWindow::defaultAccountChanged()
     if (account && account->profileName() != "") {
         auto profileLabel = profileInUseFilter(account->displayName(), account->isInUse());
         ui->actionAccountsButton->setText(profileLabel);
-        if (m_navigation) {
-            m_navigation->setAccountName(account->displayName());
-        }
         auto face = account->getFace();
         if (face.isNull()) {
             ui->actionAccountsButton->setIcon(QIcon::fromTheme("noaccount"));
@@ -1063,9 +1337,6 @@ void MainWindow::defaultAccountChanged()
     if (m_header) {
         m_header->setAccount(tr("No account"), QIcon::fromTheme(QStringLiteral("noaccount")),
                              tr("Add an account or open account settings."));
-    }
-    if (m_navigation) {
-        m_navigation->setAccountName(tr("No account"));
     }
 }
 
@@ -1221,15 +1492,29 @@ void MainWindow::addInstance(const QString& url, const QMap<QString, QString>& e
     }
 
     if (m_newInstancePage) {
-        if (!initialPage.isEmpty()) {
-            m_newInstancePage->selectPage(initialPage);
+        if (initialPage.isEmpty() || m_newInstancePage->selectedPageId() == initialPage) {
+            if (!initialPage.isEmpty()) {
+                m_newInstancePage->selectPage(initialPage);
+            }
+            m_activeWorkspaceSection = QStringLiteral("downloads");
+            m_header->setCurrentPage(WorkspaceHeader::Page::Downloads);
+            m_contentStack->setCurrentWidget(m_newInstancePage);
+            updateSecondaryMenu();
+            return;
         }
-        m_contentStack->setCurrentWidget(m_newInstancePage);
-        return;
+
+        // The embedded provider view materializes only the selected platform.
+        // Recreate it when the user switches platforms from the shared sidebar.
+        m_newInstancePage->reject();
+        if (m_newInstancePage) {
+            return;
+        }
     }
 
     m_previousWorkspacePage = m_contentStack->currentWidget();
-    auto* dialog = new NewInstanceDialog(groupName, url, extra_info, m_contentStack);
+    m_previousWorkspaceSection = m_activeWorkspaceSection;
+    auto* dialog = new NewInstanceDialog(groupName, url, extra_info, m_contentStack, initialPage);
+    dialog->setNavigationVisible(false);
     dialog->setWindowFlags(Qt::Widget);
     dialog->setWindowModality(Qt::NonModal);
     dialog->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -1239,7 +1524,10 @@ void MainWindow::addInstance(const QString& url, const QMap<QString, QString>& e
     m_newInstancePage = dialog;
     connect(dialog, &QDialog::finished, this, &MainWindow::finishNewInstance);
     m_contentStack->addWidget(dialog);
+    m_activeWorkspaceSection = QStringLiteral("downloads");
+    m_header->setCurrentPage(WorkspaceHeader::Page::Downloads);
     m_contentStack->setCurrentWidget(dialog);
+    updateSecondaryMenu();
     dialog->show();
 }
 
@@ -1262,16 +1550,22 @@ void MainWindow::finishNewInstance(int result)
     dialog->deleteLater();
     m_newInstancePage = nullptr;
     const auto returnPage = m_previousWorkspacePage;
+    const auto returnSection = m_previousWorkspaceSection;
     m_previousWorkspacePage = nullptr;
+    m_previousWorkspaceSection.clear();
+    if (!returnSection.isEmpty()) {
+        m_activeWorkspaceSection = returnSection;
+    }
     if (returnPage && m_contentStack->indexOf(returnPage) >= 0) {
         m_contentStack->setCurrentWidget(returnPage);
     } else {
-        m_navigation->setCurrentItem(NavigationSidebar::Item::Instances);
+        m_header->setCurrentPage(WorkspaceHeader::Page::Instances);
         m_contentStack->setCurrentWidget(m_instancesPage);
     }
     if (creationTask) {
         instanceFromInstanceTask(creationTask);
     }
+    updateSecondaryMenu();
 }
 
 void MainWindow::on_actionAddInstance_triggered()
@@ -1673,7 +1967,7 @@ void MainWindow::on_actionViewIconThemeFolder_triggered()
 
 void MainWindow::on_actionViewWidgetThemeFolder_triggered()
 {
-    DesktopServices::openPath(APPLICATION->themeManager()->getApplicationThemesFolder().path(), true);
+    DesktopServices::openPath(APPLICATION->themeManager()->getThemePacksFolder().path(), true);
 }
 
 void MainWindow::on_actionViewCatPackFolder_triggered()
@@ -2027,14 +2321,12 @@ void MainWindow::instanceChanged(const QModelIndex& current, [[maybe_unused]] co
         if (m_instancesPage) {
             m_instancesPage->setInstance(m_selectedInstance);
         }
-        if (m_navigation) {
-            m_navigation->setInstanceName(m_selectedInstance->name());
-        }
         if (m_header) {
             m_header->setSelectedInstance(m_selectedInstance->id());
         }
 
         updateLaunchButton();
+        updateSecondaryMenu();
 
         APPLICATION->settings()->set("SelectedInstance", m_selectedInstance->id());
 
@@ -2071,9 +2363,6 @@ void MainWindow::selectionBad()
     if (m_instancesPage) {
         m_instancesPage->setInstance(nullptr);
     }
-    if (m_navigation) {
-        m_navigation->setInstanceName({});
-    }
     if (m_header) {
         m_header->setSelectedInstance({});
     }
@@ -2085,6 +2374,7 @@ void MainWindow::selectionBad()
     ui->actionKillInstance->setEnabled(false);
     setInstanceActionsEnabled(false);
     updateLaunchButton();
+    updateSecondaryMenu();
     renameButton->setText(tr("Rename Instance"));
     updateInstanceToolIcon("grass");
 
@@ -2167,6 +2457,7 @@ void MainWindow::updateDownloadSourceStatus()
     bool priorityEnabled = false;
     int foreignMirrors = 0;
     int domesticMirrors = 0;
+    bool preferDomestic = true;
     for (const auto& state : APPLICATION->plugins()->downloadSources().currentStates()) {
         if (state.id == QStringLiteral("mojang-direct")) {
             directEnabled = state.enabled;
@@ -2174,6 +2465,7 @@ void MainWindow::updateDownloadSourceStatus()
             priorityEnabled = state.enabled;
             foreignMirrors = state.options.value(QStringLiteral("foreignMirrors")).toStringList().size();
             domesticMirrors = state.options.value(QStringLiteral("domesticMirrors")).toStringList().size();
+            preferDomestic = state.options.value(QStringLiteral("preferDomestic"), true).toBool();
         }
     }
 
@@ -2185,6 +2477,14 @@ void MainWindow::updateDownloadSourceStatus()
     } else if (!priorityEnabled || (foreignMirrors == 0 && domesticMirrors == 0)) {
         summary = tr("Mojang official");
         detail = tr("Download sources: Mojang official");
+    } else if (preferDomestic && domesticMirrors > 0) {
+        const auto concurrency = APPLICATION->plugins()->minecraftDownloadConcurrency(
+            APPLICATION->settings()->get("NumberOfConcurrentDownloads").toInt());
+        summary = tr("国内加速 ×%1").arg(concurrency);
+        detail = tr("Download sources: domestic (%1, %2 parallel) → Mojang official → foreign (%3)")
+                     .arg(domesticMirrors)
+                     .arg(concurrency)
+                     .arg(foreignMirrors);
     } else {
         summary = tr("Mirrors %1 + %2").arg(foreignMirrors).arg(domesticMirrors);
         detail = tr("Download sources: official → foreign (%1) → domestic (%2)").arg(foreignMirrors).arg(domesticMirrors);

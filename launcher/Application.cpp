@@ -60,7 +60,6 @@
 #include "ui/pages/BasePageProvider.h"
 #include "ui/pages/global/APIPage.h"
 #include "ui/pages/global/AccountListPage.h"
-#include "ui/pages/global/AppearancePage.h"
 #include "ui/pages/global/DirectoryPage.h"
 #include "ui/pages/global/ExternalToolsPage.h"
 #include "ui/pages/global/JavaPage.h"
@@ -76,7 +75,6 @@
 #include "ui/setupwizard/LoginWizardPage.h"
 #include "ui/setupwizard/PasteWizardPage.h"
 #include "ui/setupwizard/SetupWizard.h"
-#include "ui/setupwizard/ThemeWizardPage.h"
 
 #include "ui/dialogs/CustomMessageBox.h"
 
@@ -221,6 +219,47 @@ static QString ansiLogFormat = QStringLiteral(
 #undef ansi_reset
 
 namespace {
+
+void moveLayoutEntry(const QString& source, const QString& targetRoot, const QString& name)
+{
+    const QString sourcePath = FS::PathCombine(source, name);
+    const QString targetPath = FS::PathCombine(targetRoot, name);
+    if (!QFileInfo::exists(sourcePath) || QFileInfo::exists(targetPath)) {
+        return;
+    }
+    if (!QDir().mkpath(targetRoot) || !FS::move(sourcePath, targetPath)) {
+        qWarning() << "Unable to migrate storage entry:" << sourcePath << "->" << targetPath;
+    }
+}
+
+void migrateLegacyStorageLayout(const QString& storageRoot, const QString& launcherRoot, const QString& minecraftRoot)
+{
+    if (!FS::ensureFolderPathExists(launcherRoot) || !FS::ensureFolderPathExists(minecraftRoot)) {
+        return;
+    }
+    const QString marker = FS::PathCombine(launcherRoot, QStringLiteral("layout-v2"));
+    if (QFileInfo::exists(marker)) {
+        return;
+    }
+
+    for (const auto& name : { QStringLiteral("spectra.cfg"), QStringLiteral("prismlauncher.cfg"), QStringLiteral("polymc.cfg"),
+                              QStringLiteral("multimc.cfg"), QStringLiteral("prismlauncher_update.cfg"),
+                              QStringLiteral("accounts.json"), QStringLiteral("servers.json"), QStringLiteral("news.json"),
+                              QStringLiteral("logs"), QStringLiteral("cache"), QStringLiteral("meta"), QStringLiteral("themes"),
+                              QStringLiteral("catpacks"), QStringLiteral("iconthemes"), QStringLiteral("translations"),
+                              QStringLiteral("java"), QStringLiteral("icons"), QStringLiteral("skins"), QStringLiteral("mcedit") }) {
+        moveLayoutEntry(storageRoot, launcherRoot, name);
+    }
+    for (const auto& name : { QStringLiteral("instances"), QStringLiteral("assets"), QStringLiteral("libraries"),
+                              QStringLiteral("mods") }) {
+        moveLayoutEntry(storageRoot, minecraftRoot, name);
+    }
+
+    QFile layoutMarker(marker);
+    if (layoutMarker.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        layoutMarker.write("Spectra storage layout v2\n");
+    }
+}
 
 /** This is used so that we can output to the log file in addition to the CLI. */
 void appDebugOutput(QtMsgType type, const QMessageLogContext& context, const QString& msg)
@@ -396,7 +435,13 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
                 .arg(dataPath));
         return;
     }
-    if (!QDir::setCurrent(dataPath)) {
+    m_storagePath = dataPath;
+    m_minecraftPath = FS::PathCombine(m_storagePath, QStringLiteral(".Minecraft"));
+    const QString launcherPath = FS::PathCombine(m_storagePath, QStringLiteral(".Spectra"));
+    migrateLegacyStorageLayout(m_storagePath, launcherPath, m_minecraftPath);
+    dataPath = launcherPath;
+
+    if (!FS::ensureFolderPathExists(dataPath) || !QDir::setCurrent(dataPath)) {
         showFatalErrorMessage("The launcher data folder could not be opened.",
                               QString("The launcher data folder could not be opened.\n"
                                       "\n"
@@ -614,8 +659,8 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
             new INISettingsObject({ BuildConfig.LAUNCHER_CONFIGFILE, "prismlauncher.cfg", "polymc.cfg", "multimc.cfg" }, this));
 
         // Theming
-        m_settings->registerSetting("IconTheme", QString());
-        m_settings->registerSetting("ApplicationTheme", QString());
+        m_settings->registerSetting("IconTheme", QStringLiteral("default"));
+        m_settings->registerSetting("ApplicationTheme", QStringLiteral("windows11"));
         m_settings->registerSetting("BackgroundCat", QString("kitteh"));
 
         // Remembered state
@@ -660,7 +705,7 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
         logModel->setOverflowMessage(tr("Cannot display this log since the log length surpassed %1 lines.").arg(logModel->getMaxLines()));
 
         // Folders
-        m_settings->registerSetting("InstanceDir", "instances");
+        m_settings->registerSetting("InstanceDir", "../.Minecraft/instances");
         m_settings->registerSetting("LegacyInstanceDirs", QStringList());
         m_settings->registerSetting("CustomGameDirRoot", QString());
         m_settings->registerSetting("CustomAssetsDirRoot", QString());
@@ -673,6 +718,18 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
         m_settings->registerSetting("MoveModsFromDownloadsDir", false);
         m_settings->registerSetting("SkinsDir", "skins");
         m_settings->registerSetting("JavaDir", "java");
+
+        if (m_settings->get("InstanceDir").toString() == QStringLiteral("instances")) {
+            m_settings->set("InstanceDir", QStringLiteral("../.Minecraft/instances"));
+        }
+        const QString legacyInstances = FS::PathCombine(m_storagePath, QStringLiteral("instances"));
+        if (QFileInfo::exists(legacyInstances)) {
+            auto legacyDirs = m_settings->get("LegacyInstanceDirs").toStringList();
+            if (!legacyDirs.contains(legacyInstances)) {
+                legacyDirs.append(legacyInstances);
+                m_settings->set("LegacyInstanceDirs", legacyDirs);
+            }
+        }
 
 #ifdef Q_OS_MACOS
         // Folder security-scoped bookmarks
@@ -909,7 +966,6 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
             m_globalSettingsProvider->addPage<DirectoryPage>();
             m_globalSettingsProvider->addPage<PluginConfigPage>();
             m_globalSettingsProvider->addPage<LanguagePage>();
-            m_globalSettingsProvider->addPage<AppearancePage>();
             m_globalSettingsProvider->addPage<MinecraftPage>();
             m_globalSettingsProvider->addPage<JavaPage>();
             m_globalSettingsProvider->addPage<AccountListPage>();
@@ -1142,24 +1198,19 @@ bool Application::createSetupWizard()
     bool pasteInterventionRequired = settings()->get("PastebinURL") != "";
     bool validWidgets = m_themeManager->isValidApplicationTheme(settings()->get("ApplicationTheme").toString());
     bool validIcons = m_themeManager->isValidIconTheme(settings()->get("IconTheme").toString());
+    if (!validWidgets) {
+        settings()->set("ApplicationTheme", QStringLiteral("windows11"));
+        validWidgets = true;
+    }
+    if (!validIcons) {
+        settings()->set("IconTheme", QStringLiteral("default"));
+        validIcons = true;
+    }
     bool login = m_accounts->count() == 0;
     bool themeInterventionRequired = !validWidgets || !validIcons;
     bool wizardRequired = javaRequired || languageRequired || pasteInterventionRequired || themeInterventionRequired || askjava || login;
     if (wizardRequired) {
         // set default theme after going into theme wizard
-        if (!validIcons)
-            settings()->set("IconTheme", QString("pe_colored"));
-        if (!validWidgets) {
-#if defined(Q_OS_WIN32) && QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-            const QString style =
-                QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark ? QStringLiteral("dark") : QStringLiteral("bright");
-#else
-            const QString style = QStringLiteral("system");
-#endif
-
-            settings()->set("ApplicationTheme", style);
-        }
-
         m_themeManager->applyCurrentlySelectedTheme(true);
 
         m_setupWizard = new SetupWizard(nullptr);
@@ -1175,10 +1226,6 @@ bool Application::createSetupWizard()
 
         if (pasteInterventionRequired) {
             m_setupWizard->addPage(new PasteWizardPage(m_setupWizard));
-        }
-
-        if (themeInterventionRequired) {
-            m_setupWizard->addPage(new ThemeWizardPage(m_setupWizard));
         }
 
         if (login) {
@@ -1719,9 +1766,9 @@ QString Application::resolveDirectory(Plugins::DirectoryRole role, const QString
             return QDir::cleanPath(QFileInfo::exists(dotMinecraftDir) && !QFileInfo::exists(minecraftDir) ? dotMinecraftDir : minecraftDir);
         }
         case Plugins::DirectoryRole::Libraries:
-            return QDir::cleanPath(QDir(m_dataPath).filePath(QStringLiteral("libraries")));
+            return QDir::cleanPath(QDir(m_minecraftPath).filePath(QStringLiteral("libraries")));
         case Plugins::DirectoryRole::Assets:
-            return QDir::cleanPath(QDir(m_dataPath).filePath(QStringLiteral("assets")));
+            return QDir::cleanPath(QDir(m_minecraftPath).filePath(QStringLiteral("assets")));
         case Plugins::DirectoryRole::ResourcePacks:
             return QDir::cleanPath(QDir(instanceRoot).filePath(QStringLiteral("minecraft/resourcepacks")));
         case Plugins::DirectoryRole::Logs:

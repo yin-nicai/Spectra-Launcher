@@ -46,6 +46,7 @@ class PluginSystem : public QObject {
     QList<MetadataCandidate> metadataCandidates(const MetadataRequest& request) const;
     QList<DownloadCandidate> downloadCandidates(const DownloadRequest& request) const;
     QString validateDownloadUrl(const QUrl& url) const;
+    int minecraftDownloadConcurrency(int requested) const;
 
     QJsonObject configuration() const;
     void applyConfiguration(const QJsonObject& configuration, bool persist = true);

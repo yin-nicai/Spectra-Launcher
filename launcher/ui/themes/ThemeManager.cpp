@@ -24,13 +24,10 @@
 #include <QIcon>
 #include <QImageReader>
 #include <QStyle>
-#include <QStyleFactory>
 #include "Exception.h"
-#include "ui/themes/BrightTheme.h"
 #include "ui/themes/CatPack.h"
-#include "ui/themes/CustomTheme.h"
-#include "ui/themes/DarkTheme.h"
-#include "ui/themes/SystemTheme.h"
+#include "ui/themes/ThemePackAdapter.h"
+#include "ui/themes/Windows11Theme.h"
 
 #include "Application.h"
 #include "settings/SettingsObject.h"
@@ -72,9 +69,10 @@ QString ThemeManager::addTheme(std::unique_ptr<ITheme> theme)
 /// @brief Gets the Theme from the List via ID
 /// @param themeId Theme ID of theme to fetch
 /// @return Theme at themeId
-ITheme* ThemeManager::getTheme(QString themeId)
+ITheme* ThemeManager::getApplicationTheme(const QString& themeId)
 {
-    return m_themes[themeId].get();
+    const auto theme = m_themes.find(themeId);
+    return theme == m_themes.end() ? nullptr : theme->second.get();
 }
 
 QString ThemeManager::addIconTheme(IconTheme theme)
@@ -103,29 +101,18 @@ void ThemeManager::initializeIcons()
     themeDebugLog() << "<> Initializing Icon Themes";
 
     for (const QString& id : builtinIcons) {
-        IconTheme theme(id, QString(":/icons/%1").arg(id));
+        const auto resourceId = id == QStringLiteral("default") ? QStringLiteral("iOS") : id;
+        IconTheme theme(id, QString(":/icons/%1").arg(resourceId));
         if (!theme.load()) {
             themeWarningLog() << "Couldn't load built-in icon theme" << id;
             continue;
         }
+        if (id == QStringLiteral("default")) {
+            theme.setName(QObject::tr("默认"));
+        }
 
         addIconTheme(std::move(theme));
         themeDebugLog() << "Loaded Built-In Icon Theme" << id;
-    }
-
-    if (!m_iconThemeFolder.mkpath("."))
-        themeWarningLog() << "Couldn't create icon theme folder";
-    themeDebugLog() << "Icon Theme Folder Path:" << m_iconThemeFolder.absolutePath();
-
-    QDirIterator directoryIterator(m_iconThemeFolder.path(), QDir::Dirs | QDir::NoDotAndDotDot);
-    while (directoryIterator.hasNext()) {
-        QDir dir(directoryIterator.next());
-        IconTheme theme(dir.dirName(), dir.path());
-        if (!theme.load())
-            continue;
-
-        addIconTheme(std::move(theme));
-        themeDebugLog() << "Loaded Custom Icon Theme from" << dir.path();
     }
 
     themeDebugLog() << "<> Icon themes initialized.";
@@ -134,47 +121,15 @@ void ThemeManager::initializeIcons()
 void ThemeManager::initializeWidgets()
 {
     themeDebugLog() << "<> Initializing Widget Themes";
-    themeDebugLog() << "Loading Built-in Theme:" << addTheme(std::make_unique<SystemTheme>(m_defaultStyle, m_defaultPalette, true));
-    auto darkThemeId = addTheme(std::make_unique<DarkTheme>());
-    themeDebugLog() << "Loading Built-in Theme:" << darkThemeId;
-    themeDebugLog() << "Loading Built-in Theme:" << addTheme(std::make_unique<BrightTheme>());
+    m_hiddenThemeIds.clear();
 
-    themeDebugLog() << "<> Initializing System Widget Themes";
-    QStringList styles = QStyleFactory::keys();
-    for (auto& st : styles) {
-#ifdef Q_OS_WINDOWS
-        if (QSysInfo::productVersion() != "11" && st == "windows11") {
-            continue;
-        }
-#endif
-        themeDebugLog() << "Loading System Theme:" << addTheme(std::make_unique<SystemTheme>(st, m_defaultPalette, false));
-    }
+    themeDebugLog() << "Loading Built-in Theme:" << addTheme(std::make_unique<Windows11Theme>());
 
-    // TODO: need some way to differentiate same name themes in different subdirectories
-    //  (maybe smaller grey text next to theme name in dropdown?)
-
-    if (!m_applicationThemeFolder.mkpath("."))
-        themeWarningLog() << "Couldn't create theme folder";
-    themeDebugLog() << "Theme Folder Path:" << m_applicationThemeFolder.absolutePath();
-
-    QDirIterator directoryIterator(m_applicationThemeFolder.path(), QDir::Dirs | QDir::NoDotAndDotDot);
-    while (directoryIterator.hasNext()) {
-        QDir dir(directoryIterator.next());
-        QFileInfo themeJson(dir.absoluteFilePath("theme.json"));
-        if (themeJson.exists()) {
-            // Load "theme.json" based themes
-            themeDebugLog() << "Loading JSON Theme from:" << themeJson.absoluteFilePath();
-            addTheme(std::make_unique<CustomTheme>(getTheme(darkThemeId), themeJson, true));
-        } else {
-            // Load pure QSS Themes
-            QDirIterator stylesheetFileIterator(dir.absoluteFilePath(""), { "*.qss", "*.css" }, QDir::Files);
-            while (stylesheetFileIterator.hasNext()) {
-                QFile customThemeFile(stylesheetFileIterator.next());
-                QFileInfo customThemeFileInfo(customThemeFile);
-                themeDebugLog() << "Loading QSS Theme from:" << customThemeFileInfo.absoluteFilePath();
-                addTheme(std::make_unique<CustomTheme>(getTheme(darkThemeId), customThemeFileInfo, false));
-            }
-        }
+    m_themePackRegistry = std::make_unique<ThemePackRegistry>(m_themePacksFolder);
+    m_themePackRegistry->scan();
+    for (const auto* pack : m_themePackRegistry->packs()) {
+        themeDebugLog() << "Loading ZIP Theme Pack:" << pack->descriptor().name << pack->packagePath();
+        addTheme(std::make_unique<ThemePackAdapter>(pack));
     }
 
     themeDebugLog() << "<> Widget themes initialized.";
@@ -201,6 +156,9 @@ QList<ITheme*> ThemeManager::getValidApplicationThemes()
     QList<ITheme*> ret;
     ret.reserve(m_themes.size());
     for (auto&& [id, theme] : m_themes) {
+        if (m_hiddenThemeIds.contains(id)) {
+            continue;
+        }
         ret.append(theme.get());
     }
     return ret;
@@ -236,19 +194,30 @@ QDir ThemeManager::getApplicationThemesFolder()
     return m_applicationThemeFolder;
 }
 
+QDir ThemeManager::getThemePacksFolder()
+{
+    return m_themePacksFolder;
+}
+
 QDir ThemeManager::getCatPacksFolder()
 {
     return m_catPacksFolder;
 }
 
+QList<IThemePack*> ThemeManager::themePacks() const
+{
+    return m_themePackRegistry ? m_themePackRegistry->packs() : QList<IThemePack*>{};
+}
+
 void ThemeManager::setIconTheme(const QString& name)
 {
-    if (m_icons.find(name) == m_icons.end()) {
+    const auto theme = m_icons.find(name);
+    if (theme == m_icons.end()) {
         themeWarningLog() << "Tried to set invalid icon theme:" << name;
         return;
     }
 
-    QIcon::setThemeName(name);
+    QIcon::setThemeName(theme->second.resourceName());
 }
 
 void ThemeManager::setApplicationTheme(const QString& name, bool initial)
@@ -270,11 +239,17 @@ void ThemeManager::setApplicationTheme(const QString& name, bool initial)
 void ThemeManager::applyCurrentlySelectedTheme(bool initial)
 {
     auto settings = APPLICATION->settings();
-    setIconTheme(settings->get("IconTheme").toString());
+    auto iconTheme = settings->get("IconTheme").toString();
+    if (!isValidIconTheme(iconTheme)) {
+        iconTheme = QStringLiteral("default");
+        settings->set("IconTheme", iconTheme);
+    }
+    setIconTheme(iconTheme);
     themeDebugLog() << "<> Icon theme set.";
     auto applicationTheme = settings->get("ApplicationTheme").toString();
-    if (applicationTheme == "") {
-        applicationTheme = m_defaultStyle;
+    if (!isValidApplicationTheme(applicationTheme)) {
+        applicationTheme = QStringLiteral("windows11");
+        settings->set("ApplicationTheme", applicationTheme);
     }
     setApplicationTheme(applicationTheme, initial);
     themeDebugLog() << "<> Application theme set.";
@@ -354,6 +329,7 @@ void ThemeManager::initializeCatPacks()
 
 void ThemeManager::refresh()
 {
+    m_themePackRegistry.reset();
     m_themes.clear();
     m_icons.clear();
     m_catPacks.clear();

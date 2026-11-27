@@ -4,5 +4,6 @@
         <file>@Launcher_AppID@.svg</file>
         <file>@Launcher_AppID@.logo.svg</file>
         <file>@Launcher_AppID@.logo-darkmode.svg</file>
+        <file>@Launcher_AppID@.wallpaper.png</file>
     </qresource>
 </RCC>

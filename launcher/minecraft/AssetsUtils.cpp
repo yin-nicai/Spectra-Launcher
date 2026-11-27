@@ -313,7 +313,8 @@ QString AssetObject::getRelPath()
 
 NetJob::Ptr AssetsIndex::getDownloadJob()
 {
-    auto job = makeShared<NetJob>(QObject::tr("Assets for %1").arg(id), APPLICATION->network());
+    auto job = makeShared<NetJob>(QObject::tr("Assets for %1").arg(id), APPLICATION->network(),
+                                  MinecraftDownloads::recommendedConcurrency());
     for (auto& object : objects.values()) {
         auto dl = object.getDownloadAction();
         if (dl) {

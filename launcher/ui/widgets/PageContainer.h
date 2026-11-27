@@ -38,6 +38,7 @@
 
 #include <QListView>
 #include <QModelIndex>
+#include <QPointer>
 #include <QWidget>
 
 #include "ui/pages/BasePageContainer.h"
@@ -52,6 +53,8 @@ class QListView;
 class QLineEdit;
 class QStackedLayout;
 class QGridLayout;
+class QGraphicsOpacityEffect;
+class QPropertyAnimation;
 
 class PageContainer : public QWidget, public BasePageContainer {
     Q_OBJECT
@@ -92,7 +95,8 @@ class PageContainer : public QWidget, public BasePageContainer {
 
     void changeEvent(QEvent*) override;
 
-    void hidePageList() { m_pageList->hide(); }
+    void setPageListVisible(bool visible) { m_pageList->setVisible(visible); }
+    void hidePageList() { setPageListVisible(false); }
 
    private:
     void createUI();
@@ -118,4 +122,6 @@ class PageContainer : public QWidget, public BasePageContainer {
     QListView* m_pageList;
     QLabel* m_header;
     QGridLayout* m_layout;
+    QPointer<QGraphicsOpacityEffect> m_pageEffect;
+    QPointer<QPropertyAnimation> m_pageAnimation;
 };

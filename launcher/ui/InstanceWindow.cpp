@@ -249,9 +249,36 @@ void InstanceWindow::refreshContainer()
     m_container->refreshContainer();
 }
 
+void InstanceWindow::setNavigationVisible(bool visible)
+{
+    if (m_container) {
+        m_container->setPageListVisible(visible);
+    }
+}
+
+QList<QPair<QString, QString>> InstanceWindow::navigationEntries() const
+{
+    QList<QPair<QString, QString>> entries;
+    if (!m_container) {
+        return entries;
+    }
+    for (const auto* page : m_container->getPages()) {
+        if (page && page->shouldDisplay()) {
+            entries.append({ page->id(), page->displayName() });
+        }
+    }
+    return entries;
+}
+
 BasePage* InstanceWindow::selectedPage() const
 {
     return m_container->selectedPage();
+}
+
+QString InstanceWindow::selectedPageId() const
+{
+    const auto* page = selectedPage();
+    return page ? page->id() : QString();
 }
 
 bool InstanceWindow::requestClose()

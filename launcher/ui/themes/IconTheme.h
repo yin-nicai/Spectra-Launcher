@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <QFileInfo>
 #include <QString>
 
 class IconTheme {
@@ -29,6 +30,8 @@ class IconTheme {
     QString id() const { return m_id; }
     QString path() const { return m_path; }
     QString name() const { return m_name; }
+    QString resourceName() const { return QFileInfo(m_path).fileName(); }
+    void setName(const QString& name) { m_name = name; }
 
    private:
     QString m_id;

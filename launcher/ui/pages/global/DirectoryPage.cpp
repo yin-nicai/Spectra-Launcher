@@ -64,7 +64,7 @@ DirectoryPage::DirectoryPage(QWidget* parent) : QWidget(parent)
         m_rows.append(row);
     };
 
-    addFormRow(QStringLiteral("InstanceDir"), QStringLiteral("instances"), tr("Instance root"),
+    addFormRow(QStringLiteral("InstanceDir"), QStringLiteral("../.Minecraft/instances"), tr("Instance root"),
                tr("The primary root for new instances. Old roots remain available after you change this path."), tr("Open instances"));
     addFormRow(QStringLiteral("CustomGameDirRoot"), {}, tr("Game directory root"),
                tr("New instances use <root>/<instance ID>. Existing game directories are kept in place."), tr("Open game root"));

@@ -56,7 +56,8 @@ class NewInstanceDialog : public QDialog, public BasePageProvider {
     explicit NewInstanceDialog(const QString& initialGroup,
                                const QString& url = QString(),
                                const QMap<QString, QString>& extra_info = {},
-                               QWidget* parent = 0);
+                               QWidget* parent = 0,
+                               const QString& requestedPageId = QString());
     ~NewInstanceDialog();
 
     void updateDialogState();
@@ -66,6 +67,8 @@ class NewInstanceDialog : public QDialog, public BasePageProvider {
     void setSuggestedIconFromFile(const QString& path, const QString& name);
     void setSuggestedIcon(const QString& key);
     void selectPage(const QString& pageId);
+    void setNavigationVisible(bool visible);
+    QString selectedPageId() const;
 
     InstanceTask* extractTask();
 
@@ -101,6 +104,7 @@ class NewInstanceDialog : public QDialog, public BasePageProvider {
     QString importVersion;
 
     QString m_searchTerm;
+    QString m_requestedPageId;
 
     void importIconNow();
 };

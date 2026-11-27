@@ -180,6 +180,12 @@ class Application : public QApplication {
     /// the data path the application is using
     const QString& dataRoot() { return m_dataPath; }
 
+    /// The shared storage root containing .Spectra and .Minecraft.
+    const QString& storageRoot() { return m_storagePath; }
+
+    /// The root containing instances and Minecraft game data.
+    const QString& minecraftRoot() { return m_minecraftPath; }
+
     /// the java installed path the application is using
     const QString javaPath();
 
@@ -271,7 +277,9 @@ class Application : public QApplication {
     QMap<QString, std::shared_ptr<BaseProfilerFactory>> m_profilers;
 
     QString m_rootPath;
+    QString m_storagePath;
     QString m_dataPath;
+    QString m_minecraftPath;
     Status m_status = Application::StartingUp;
     Capabilities m_capabilities;
     bool m_portable = false;

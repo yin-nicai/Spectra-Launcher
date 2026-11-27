@@ -41,7 +41,7 @@
         <item row="0" column="3">
          <widget class="QPushButton" name="widgetStyleFolder">
           <property name="toolTip">
-           <string>View widget themes folder.</string>
+           <string>打开 ZIP 主题包文件夹。</string>
           </property>
           <property name="text">
            <string>Open Folder</string>
@@ -113,7 +113,7 @@
         <item row="0" column="0">
          <widget class="QLabel" name="widgetStyleLabel">
           <property name="text">
-           <string>Theme:</string>
+           <string>主题：</string>
           </property>
           <property name="buddy">
            <cstring>widgetStyleComboBox</cstring>

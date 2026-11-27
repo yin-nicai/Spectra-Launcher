@@ -762,6 +762,8 @@ SET(LAUNCHER_SOURCES
     ui/GuiUtil.cpp
     ui/MainWindow.h
     ui/MainWindow.cpp
+    ui/AnimatedStackedWidget.h
+    ui/AnimatedStackedWidget.cpp
     ui/HomeDashboard.h
     ui/HomeDashboard.cpp
     ui/DownloadsPage.h
@@ -772,10 +774,10 @@ SET(LAUNCHER_SOURCES
     ui/SettingsHubPage.cpp
     ui/AccountsPage.h
     ui/AccountsPage.cpp
-    ui/NavigationSidebar.h
-    ui/NavigationSidebar.cpp
     ui/WorkspaceHeader.h
     ui/WorkspaceHeader.cpp
+    ui/WorkspaceSideMenu.h
+    ui/WorkspaceSideMenu.cpp
     ui/WorkspaceStyle.h
     ui/InstanceWindow.h
     ui/InstanceWindow.cpp
@@ -800,7 +802,6 @@ SET(LAUNCHER_SOURCES
     ui/setupwizard/LanguageWizardPage.h
     ui/setupwizard/PasteWizardPage.cpp
     ui/setupwizard/PasteWizardPage.h
-    ui/setupwizard/ThemeWizardPage.h
     ui/setupwizard/AutoJavaWizardPage.cpp
     ui/setupwizard/AutoJavaWizardPage.h
     ui/setupwizard/LoginWizardPage.cpp
@@ -823,8 +824,14 @@ SET(LAUNCHER_SOURCES
     ui/themes/SystemTheme.h
     ui/themes/IconTheme.cpp
     ui/themes/IconTheme.h
+    ui/themes/ThemePack.cpp
+    ui/themes/ThemePack.h
+    ui/themes/ThemePackAdapter.cpp
+    ui/themes/ThemePackAdapter.h
     ui/themes/ThemeManager.cpp
     ui/themes/ThemeManager.h
+    ui/themes/Windows11Theme.cpp
+    ui/themes/Windows11Theme.h
     ui/themes/CatPack.cpp
     ui/themes/CatPack.h
     ui/themes/CatPainter.cpp
@@ -902,7 +909,6 @@ SET(LAUNCHER_SOURCES
     ui/pages/global/PluginConfigPage.h
     ui/pages/UnavailablePage.cpp
     ui/pages/UnavailablePage.h
-    ui/pages/global/AppearancePage.h
     ui/pages/global/ProxyPage.cpp
     ui/pages/global/ProxyPage.h
     ui/pages/global/APIPage.cpp
@@ -1105,8 +1111,6 @@ SET(LAUNCHER_SOURCES
     ui/widgets/ProgressWidget.cpp
     ui/widgets/WideBar.h
     ui/widgets/WideBar.cpp
-    ui/widgets/AppearanceWidget.h
-    ui/widgets/AppearanceWidget.cpp
     ui/widgets/MinecraftSettingsWidget.h
     ui/widgets/MinecraftSettingsWidget.cpp
     ui/widgets/JavaSettingsWidget.h
@@ -1187,7 +1191,6 @@ qt_wrap_ui(LAUNCHER_UI
     ui/widgets/InfoFrame.ui
     ui/widgets/ModFilterWidget.ui
     ui/widgets/SubTaskProgressBar.ui
-    ui/widgets/AppearanceWidget.ui
     ui/widgets/MinecraftSettingsWidget.ui
     ui/widgets/JavaSettingsWidget.ui
     ui/dialogs/CopyInstanceDialog.ui
@@ -1330,6 +1333,12 @@ if(WIN32)
 endif()
 
 add_executable(${Launcher_Name} MACOSX_BUNDLE WIN32 main.cpp ${LAUNCHER_RCS})
+
+if(WIN32)
+    add_executable(SpectraBootstrap WIN32 bootstrap/WinBootstrap.c ${LAUNCHER_RCS})
+    set_target_properties(SpectraBootstrap PROPERTIES OUTPUT_NAME "spectra-bootstrap")
+    target_link_libraries(SpectraBootstrap PRIVATE shell32)
+endif()
 
 if(${Launcher_USE_PCH})
     target_precompile_headers(${Launcher_Name} REUSE_FROM Launcher_logic)
@@ -1540,7 +1549,7 @@ if(WIN32 OR (UNIX AND APPLE))
     # Add qtlogging.ini as a config file
     install(
         FILES "qtlogging.ini"
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/${RESOURCES_DEST_DIR}
+        DESTINATION ${RESOURCES_DEST_DIR}
         COMPONENT bundle
     )
 endif()

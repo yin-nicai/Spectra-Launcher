@@ -88,9 +88,9 @@ QString PrismDirectoryStrategy::resolve(DirectoryRole role, const DirectoryConte
         case DirectoryRole::Game:
             return gameRoot;
         case DirectoryRole::Libraries:
-            return QDir::cleanPath(QDir(context.dataRoot).filePath(QStringLiteral("libraries")));
+            return QDir::cleanPath(QDir(APPLICATION->minecraftRoot()).filePath(QStringLiteral("libraries")));
         case DirectoryRole::Assets: {
-            const auto legacy = QDir::cleanPath(QDir(context.dataRoot).filePath(QStringLiteral("assets")));
+            const auto legacy = QDir::cleanPath(QDir(APPLICATION->minecraftRoot()).filePath(QStringLiteral("assets")));
             const auto configured = configuredRoot(context.dataRoot, QStringLiteral("CustomAssetsDirRoot"));
             return preservedOrConfigured(legacy, configured);
         }
