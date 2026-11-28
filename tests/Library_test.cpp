@@ -89,6 +89,21 @@ class LibraryTest : public QObject {
         QCOMPARE(native32, {});
         QCOMPARE(native64, {});
     }
+    void test_configured_storage_root()
+    {
+        RuntimeContext r = dummyContext();
+        const auto librariesRoot = QDir("resolved-minecraft/libraries").absolutePath();
+        Library::setLibrariesRoot(librariesRoot);
+
+        Library test("test.package:testname:testversion");
+        QStringList jar, native, native32, native64;
+        test.getApplicableFiles(r, jar, native, native32, native64, QString());
+        QCOMPARE(jar, { FS::PathCombine(librariesRoot, "test/package/testname/testversion/testname-testversion.jar") });
+        QCOMPARE(native, {});
+        QCOMPARE(native32, {});
+        QCOMPARE(native64, {});
+    }
+    void cleanup() { Library::setLibrariesRoot({}); }
     void test_legacy_url()
     {
         RuntimeContext r = dummyContext();

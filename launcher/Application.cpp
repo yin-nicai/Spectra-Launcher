@@ -108,6 +108,7 @@
 #include "MTPixmapCache.h"
 
 #include <minecraft/auth/AccountList.h>
+#include <minecraft/Library.h>
 #include "icons/IconList.h"
 #include "net/HttpMetaCache.h"
 
@@ -937,6 +938,7 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
 
         m_settings->registerSetting(Plugins::PluginSystem::SETTING_ID, "{}");
         m_plugins = std::make_unique<Plugins::PluginSystem>(m_settings.get(), this);
+        Library::setLibrariesRoot(resolveDirectory(Plugins::DirectoryRole::Libraries));
 
         m_settings->registerSetting("CloseAfterLaunch", false);
         m_settings->registerSetting("QuitAfterGameStop", false);

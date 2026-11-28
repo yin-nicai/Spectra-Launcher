@@ -100,6 +100,7 @@ class Library {
     bool isNative() const { return m_nativeClassifiers.size() != 0; }
 
     void setStoragePrefix(QString prefix = QString());
+    static void setLibrariesRoot(const QString& root);
 
     /// Set the url base for downloads
     void setRepositoryURL(const QString& base_url) { m_repositoryURL = base_url; }

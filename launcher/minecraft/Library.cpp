@@ -42,6 +42,10 @@
 #include <net/ChecksumValidator.h>
 #include <plugin/download/DownloadCoordinator.h>
 
+namespace {
+QString s_librariesRoot;
+}
+
 /**
  * @brief Collect applicable files for the library.
  *
@@ -67,12 +71,15 @@ void Library::getApplicableFiles(const RuntimeContext& runtimeContext,
     // Lambda function to get the absolute file path
     auto actualPath = [this, local, overridePath](QString relPath) {
         relPath = FS::RemoveInvalidPathChars(relPath);
-        QFileInfo out(FS::PathCombine(storagePrefix(), relPath));
         if (local && !overridePath.isEmpty()) {
+            QFileInfo out(FS::PathCombine(storagePrefix(), relPath));
             QString fileName = out.fileName();
             return QFileInfo(FS::PathCombine(overridePath, fileName)).absoluteFilePath();
         }
-        return out.absoluteFilePath();
+        if (!s_librariesRoot.isEmpty()) {
+            return QFileInfo(FS::PathCombine(s_librariesRoot, relPath)).absoluteFilePath();
+        }
+        return QFileInfo(FS::PathCombine(storagePrefix(), relPath)).absoluteFilePath();
     };
 
     QString raw_storage = storageSuffix(runtimeContext);
@@ -321,6 +328,11 @@ QString Library::getCompatibleNative(const RuntimeContext& runtimeContext) const
 void Library::setStoragePrefix(QString prefix)
 {
     m_storagePrefix = prefix;
+}
+
+void Library::setLibrariesRoot(const QString& root)
+{
+    s_librariesRoot = QDir::cleanPath(root);
 }
 
 /**
